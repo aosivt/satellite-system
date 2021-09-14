@@ -2,6 +2,9 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
+    "paths": {
+      "fs": ["./node_modules/fs-web"]
+    },
     "outDir": "./out-tsc/app",
     "types": []
   },

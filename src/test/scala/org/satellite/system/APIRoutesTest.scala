@@ -10,6 +10,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.testkit.TestProbe
 import akka.util.{ByteString, Timeout}
+import org.apache.spark.sql.SparkSession
 import org.satellite.system.core.Application
 import org.satellite.system.web.APIRoutes
 import org.scalatest.concurrent.ScalaFutures
@@ -33,6 +34,9 @@ class APIRoutesTest extends AnyWordSpec with Matchers with ScalaFutures with Sca
 
 
   implicit val app: Application = Application()
+  implicit val spark: SparkSession = SparkSession.builder
+    .master("local")
+    .getOrCreate
   // the Akka HTTP route testkit does not yet support a typed actor system (https://github.com/akka/akka-http/issues/2036)
   // so we have to adapt for now
   lazy val testKit = ActorTestKit()
@@ -42,7 +46,7 @@ class APIRoutesTest extends AnyWordSpec with Matchers with ScalaFutures with Sca
   // We use the real UserRegistryActor to test it while we hit the Routes,
   // but we could "mock" it by implementing it in-place or by using a TestProbe
   // created with testKit.createTestProbe()
-  val apiRoutes = new APIRoutes(app)
+  val apiRoutes = new APIRoutes(app, spark)
   lazy val routes = apiRoutes.routes
   val user = User("Kapi", 42)
 

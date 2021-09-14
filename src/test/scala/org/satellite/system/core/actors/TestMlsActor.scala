@@ -8,7 +8,7 @@ import org.scalatest.wordspec.AnyWordSpecLike
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import scala.reflect.internal.MacroAnnotionTreeInfo
+
 class TestMlsActor extends TestKit(ActorSystem("MySpec"))
   with ImplicitSender
   with AnyWordSpecLike

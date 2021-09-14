@@ -10,6 +10,7 @@
   },
   "private": true,
   "dependencies": {
+    "@types/plotly.js": "^1.38.5",
     "@angular/animations": "~12.2.0",
     "@angular/common": "~12.2.0",
     "@angular/compiler": "~12.2.0",
@@ -18,8 +19,10 @@
     "@angular/platform-browser": "~12.2.0",
     "@angular/platform-browser-dynamic": "~12.2.0",
     "@angular/router": "~12.2.0",
+    "fs-web": "^1.0.1",
     "rxjs": "~6.6.0",
     "tslib": "^2.3.0",
+    "plotly.js": "^1.48.3",
     "zone.js": "~0.11.4"
   },
   "devDependencies": {

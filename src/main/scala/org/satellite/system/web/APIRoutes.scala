@@ -6,6 +6,7 @@ import akka.http.scaladsl.model.{HttpHeader, StatusCodes}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.settings.RoutingSettings
+import org.apache.spark.sql.SparkSession
 import org.satellite.system.core.Application
 import spray.json.{JsString, JsValue}
 
@@ -16,7 +17,7 @@ import scala.collection.immutable.Seq
   *
   * @param application an Application
   */
-class APIRoutes(application: Application) {
+class APIRoutes(application: Application, spark: SparkSession) {
 
   implicit val settings: RoutingSettings = RoutingSettings.apply(application.config)
 
@@ -26,7 +27,10 @@ class APIRoutes(application: Application) {
         Route.seal(concat(
           get {
             pathPrefix("get") {
-              complete(JsString("OK GET"))
+              val df = spark.sqlContext.sql("select * from parquet.`/media/alex/058CFFE45C3C7827/maiskoe/result/*.parquet`")
+              df.printSchema()
+//              createDataset(spark.sparkContext.parallelize(template))(MyDataEncoders.myDataEncoder)
+              complete(JsString(df.count().toString))
             }
           },
           post {
@@ -54,6 +58,11 @@ class APIRoutes(application: Application) {
         ))
       }
     }
+  }
+
+  object MyDataEncoders {
+    implicit def myDataEncoder: org.apache.spark.sql.Encoder[String] =
+      org.apache.spark.sql.Encoders.kryo[String]
   }
 
 }
