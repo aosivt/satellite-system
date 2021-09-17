@@ -22,8 +22,8 @@ trait SocketWebServer extends WebServer { self: WebServer =>
   protected val socketActorProps: Props
   protected val keepAliveMessage: Option[TextMessage] = Some(TextMessage("""{"method":"keepAlive"}"""))
   protected val keepAliveTimeout: FiniteDuration = 1.minute
-
-  private lazy val sinkActorProps: Props = SocketSinkActor.props(socketActorProps)
+  val usersSocket: Array[ActorRef] = Array[ActorRef](ActorRef.noSender)
+  private lazy val sinkActorProps: Props = SocketSinkActor.props(socketActorProps, usersSocket)
   private lazy val socketsKillSwitch: SharedKillSwitch = KillSwitches.shared("sockets")
   private lazy val supervisor = system.actorOf(SocketSinkSupervisor.props(), "sockets")
 
@@ -41,6 +41,8 @@ trait SocketWebServer extends WebServer { self: WebServer =>
       case None          => flow2
     }
   }
+
+
 
   override def stop(): Future[Done] = {
     system.log.info("Killing open sockets.")

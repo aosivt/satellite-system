@@ -7,19 +7,11 @@ import {Component, OnInit} from '@angular/core';
 })
 export class AppComponent implements OnInit{
   title = 'typescript';
-  ws = new WebSocket("ws://localhost:8080/socket");
+
   ngOnInit(): void {
-     this.ws.onopen = () => {
-     this.ws.onmessage = (event) => {
-        console.log(event);
-  }
-
-
-
-    };
   }
   public send(): void{
-    this.ws.send("{\"data\":\"data\"}");
+
   }
 
 

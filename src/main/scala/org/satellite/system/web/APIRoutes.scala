@@ -1,5 +1,6 @@
 package org.satellite.system.web
 
+import akka.actor.{ActorRef, Props}
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{HttpHeader, StatusCodes}
@@ -7,19 +8,22 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.settings.RoutingSettings
 import org.apache.spark.sql.SparkSession
+import org.codehaus.jackson.map.ObjectMapper
+import org.json4s.jackson.Json
 import org.satellite.system.core.Application
-import spray.json.{JsString, JsValue}
+import spray.json.{JsString, JsValue, JsonParser}
 
 import scala.collection.immutable.Seq
-
+import org.apache.spark.sql.Encoders
 /**
   * This is where you define your XHR routes.
   *
   * @param application an Application
   */
-class APIRoutes(application: Application, spark: SparkSession) {
+class APIRoutes(application: Application, spark: SparkSession, usersSocket: Array[ActorRef]) {
 
   implicit val settings: RoutingSettings = RoutingSettings.apply(application.config)
+  private val encoder = Encoders.bean(classOf[PlotlyData])
 
   def routes: Route = {
     pathPrefix("api") {
@@ -27,10 +31,13 @@ class APIRoutes(application: Application, spark: SparkSession) {
         Route.seal(concat(
           get {
             pathPrefix("get") {
-              val df = spark.sqlContext.sql("select * from parquet.`/media/alex/058CFFE45C3C7827/maiskoe/result/*.parquet`")
-              df.printSchema()
-//              createDataset(spark.sparkContext.parallelize(template))(MyDataEncoders.myDataEncoder)
-              complete(JsString(df.count().toString))
+
+              val df = spark.sqlContext.sql("select rowId,S2A_MSIL1C_20160611T051652_N0202_R062_T45UVA_20160611T051654_SAFE as result from parquet.`/media/alex/058CFFE45C3C7827/maiskoe/result/*.parquet`")
+              df.collect().foreach(r=>{
+                usersSocket(0) ! JsonParser(r.json)
+              })
+
+              complete(StatusCodes.OK)
             }
           },
           post {
@@ -60,8 +67,10 @@ class APIRoutes(application: Application, spark: SparkSession) {
     }
   }
 
-  object MyDataEncoders {
-    implicit def myDataEncoder: org.apache.spark.sql.Encoder[String] =
+  case class PlotlyData(rowId: Int, result: Array[Double])
+
+  object PlotlyDataEncoders {
+    implicit def PlotlyDataEncoder: org.apache.spark.sql.Encoder[String] =
       org.apache.spark.sql.Encoders.kryo[String]
   }
 

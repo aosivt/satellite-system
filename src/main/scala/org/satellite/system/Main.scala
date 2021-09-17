@@ -20,6 +20,7 @@ object Main extends App with SPAWebServer with SocketWebServer {
   implicit val app: Application = Application()
   implicit val spark: SparkSession = SparkSession.builder
     .master("local")
+    .config("spark.driver.maxResultSize","4g")
     .getOrCreate
 
   private val host = app.config.getString("http.host")
@@ -27,11 +28,14 @@ object Main extends App with SPAWebServer with SocketWebServer {
   private val stopOnReturn = app.config.getBoolean("http.stop-on-return")
   private val keepAliveInSec = app.config.getInt("http.webSocket.keep-alive")
 
-  private val apiRoutes = new APIRoutes(app, spark)
+
 
   override implicit val system: ActorSystem = app.system
   override val socketActorProps: Props = SocketActor.props()
   override val keepAliveTimeout: FiniteDuration = keepAliveInSec.seconds
+
+  private val apiRoutes = new APIRoutes(app, spark, usersSocket)
+
   override val routes: Route = apiRoutes.routes ~ super.routes
 
   start(host, port) foreach { _ =>

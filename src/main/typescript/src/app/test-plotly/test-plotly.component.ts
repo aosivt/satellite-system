@@ -10,17 +10,33 @@ import {range} from "rxjs";
   styleUrls: ['./test-plotly.component.css']
 })
 export class TestPlotlyComponent implements OnInit {
+  ws = new WebSocket("ws://localhost:8080/socket");
 
   constructor() { }
 
   ngOnInit(): void {
+    const resultData: Result[] = [];
+    this.ws.onopen = () => {
+      this.ws.onmessage = (event) => {
+        let obj: Result = JSON.parse(event.data);
+        resultData.push(obj);
+        if (resultData.length % 1000 === 0){
+          this.setDataZ(resultData.sort((r1,r2)=>r1.rowId - r2.rowId).map(r=>r.result));
+        }
+      }
+    }
     this.fieldingPlotly();
   }
+
   public fieldingPlotly() {
 
     const z1 = [[  -1, -0.6, 0, 1],
       [   1, -0.6, 0, 1],
       [-0.5, -0.6, 1, 0]];
+
+    this.setDataZ(z1)
+  }
+  public setDataZ(z1: number[][]) {
 
     const data_z1 = {
       z: z1, type: 'heatmap', x: range(0, z1[0].length - 1), y: range(-z1.length + 1, 0),
@@ -74,4 +90,9 @@ export class TestPlotlyComponent implements OnInit {
     };
     return layout;
   }
+
+}
+export interface Result{
+  rowId: number;
+  result: number[];
 }

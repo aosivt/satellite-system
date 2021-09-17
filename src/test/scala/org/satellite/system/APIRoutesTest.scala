@@ -1,5 +1,6 @@
 package org.satellite.system
 
+import akka.actor.{ActorRef, Props}
 import akka.actor.testkit.typed.scaladsl.ActorTestKit
 import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpMethods, HttpRequest, MediaTypes, MessageEntity, StatusCodes}
@@ -12,7 +13,7 @@ import akka.testkit.TestProbe
 import akka.util.{ByteString, Timeout}
 import org.apache.spark.sql.SparkSession
 import org.satellite.system.core.Application
-import org.satellite.system.web.APIRoutes
+import org.satellite.system.web.{APIRoutes, SocketActor}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -31,7 +32,7 @@ class APIRoutesTest extends AnyWordSpec with Matchers with ScalaFutures with Sca
 
   val postRequest = HttpRequest(uri = "/api")
 
-
+  val usersSocket: Array[ActorRef] = Array()
 
   implicit val app: Application = Application()
   implicit val spark: SparkSession = SparkSession.builder
@@ -46,7 +47,7 @@ class APIRoutesTest extends AnyWordSpec with Matchers with ScalaFutures with Sca
   // We use the real UserRegistryActor to test it while we hit the Routes,
   // but we could "mock" it by implementing it in-place or by using a TestProbe
   // created with testKit.createTestProbe()
-  val apiRoutes = new APIRoutes(app, spark)
+  val apiRoutes = new APIRoutes(app, spark, usersSocket)
   lazy val routes = apiRoutes.routes
   val user = User("Kapi", 42)
 
