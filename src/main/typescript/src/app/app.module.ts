@@ -4,6 +4,7 @@ import { BrowserModule } from '@angular/platform-browser';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { TestPlotlyComponent } from './test-plotly/test-plotly.component';
+import {HttpClientModule} from "@angular/common/http";
 
 @NgModule({
   declarations: [
@@ -11,7 +12,7 @@ import { TestPlotlyComponent } from './test-plotly/test-plotly.component';
     TestPlotlyComponent
   ],
   imports: [
-    BrowserModule,
+    BrowserModule,HttpClientModule,
     AppRoutingModule
   ],
   providers: [],
