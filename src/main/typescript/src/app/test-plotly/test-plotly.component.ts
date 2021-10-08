@@ -74,13 +74,14 @@ export class TestPlotlyComponent implements OnInit {
       },
     } ;
 
-    this.setDivElementPlotLy(data_z1,[1,1,1,1,1,1],'');
+    this.setDivElementPlotLy(data_z1,[1,1,1,1,1,1],'',0);
   }
   public setDataZModify(result: Result[]) {
 
     let z1:number[][] = result.sort((r1,r2)=>r2.rowId - r1.rowId).map(r=>r.result);
     let geoTransform = result[0].geoTransform
     let projection = result[0].projection
+    let countPixel = result[0].result.length * result.length
     // let x:number[] = [];
     // let y:number[] = [];
 
@@ -111,29 +112,37 @@ export class TestPlotlyComponent implements OnInit {
       },
     } ;
 
-    this.setDivElementPlotLy(data_z1,geoTransform,projection);
+    this.setDivElementPlotLy(data_z1,geoTransform,projection,countPixel);
   }
-  public setDivElementPlotLy(dataZ : any, geoTransform: number[],projection:string) {
+  public setDivElementPlotLy(dataZ : any, geoTransform: number[],projection:string,countPixel:number) {
     const el = <PlotlyHTMLElement>document.getElementById('plotly');
     Plotly.newPlot(el, [dataZ], this.getLayoutForPlotLy(), { }).then(e=>{
-      e.on('plotly_click',(event => {
-        let valueX = event.points[0].x!== undefined ? Number.isInteger(event.points[0].x)?Number.parseInt(<string>event.points[0].x)+1:0:0;
-        let valueY = event.points[0].y!== undefined ? Number.isInteger(event.points[0].y)?Number.parseInt(<string>event.points[0].y)+1:0:0;
-        let X :number = valueX;
-        let Y :number = valueY;
-            //   X_geo = GT(0) + X_pixel * GT(1) + Y_line * GT(2)
-            //   Y_geo = GT(3) + X_pixel * GT(4) + Y_line * GT(5)
-        let xCoord = geoTransform[0] + (X * geoTransform[1]) + (Y * geoTransform[2])
-        let yCoord = geoTransform[3] + (X * geoTransform[4]) + (Y * geoTransform[5])
-        console.log(xCoord, yCoord);
-        console.log(projection)
-        const proj4 = (proj4x as any).default;
-        // let coord = proj4("+proj=utm +ZONE=45N +datum=WGS84 +units=m +no_defs",[xCoord,yCoord]);
-        let coord = proj4(projection,[yCoord,xCoord]);
-        console.log(coord);
-      }
+          e.on('plotly_click',(event => {
+            let valueX = event.points[0].x!== undefined ? Number.isInteger(event.points[0].x)?Number.parseInt(<string>event.points[0].x)+1:0:0;
+            let valueY = event.points[0].y!== undefined ? Number.isInteger(event.points[0].y)?Number.parseInt(<string>event.points[0].y)+1:0:0;
+            let X :number = valueX;
+            let Y :number = valueY;
+                //   X_geo = GT(0) + X_pixel * GT(1) + Y_line * GT(2)
+                //   Y_geo = GT(3) + X_pixel * GT(4) + Y_line * GT(5)
+            let xCoord = geoTransform[0] + (X * geoTransform[1]) + (Y * geoTransform[2]);
+            let yCoord = geoTransform[3] + (X * geoTransform[4]) + (Y * geoTransform[5]);
+
+            //Координаты в UTM
+            console.log(xCoord, yCoord);
+
+            console.log(geoTransform);
+
+            //Площадь всей картинки
+            console.log(countPixel*geoTransform[1]*geoTransform[5]);
+            //Площадь пикселя
+            console.log(geoTransform[1]*geoTransform[5]);
 
 
+            console.log(projection);
+            const proj4 = (proj4x as any).default;
+            let coord = proj4(projection,[yCoord,xCoord]);
+            console.log(coord);
+          }
         )
       )
     });
