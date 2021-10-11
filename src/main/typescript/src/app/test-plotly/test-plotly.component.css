@@ -1,0 +1,3 @@
+.container{overflow:hidden;width:1900px}
+.box{white-space:nowrap}
+.box div{width:900px;display:inline-block;border:1px solid black}

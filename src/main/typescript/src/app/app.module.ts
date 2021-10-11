@@ -5,6 +5,10 @@ import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { TestPlotlyComponent } from './test-plotly/test-plotly.component';
 import {HttpClientModule} from "@angular/common/http";
+import {MatCardModule} from "@angular/material/card";
+import {MatButtonModule} from "@angular/material/button";
+import {BrowserAnimationsModule} from "@angular/platform-browser/animations";
+import {MatGridListModule} from "@angular/material/grid-list";
 
 @NgModule({
   declarations: [
@@ -12,8 +16,8 @@ import {HttpClientModule} from "@angular/common/http";
     TestPlotlyComponent
   ],
   imports: [
-    BrowserModule,HttpClientModule,
-    AppRoutingModule
+    BrowserModule, HttpClientModule, BrowserAnimationsModule,
+    AppRoutingModule, MatCardModule, MatButtonModule, MatGridListModule
   ],
   providers: [],
   bootstrap: [AppComponent]
