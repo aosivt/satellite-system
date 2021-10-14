@@ -1,6 +1,8 @@
 import {Component, OnInit} from '@angular/core';
-import * as Plotly from 'plotly.js';
-import {Layout, PlotlyHTMLElement} from 'plotly.js';
+// @ts-ignore
+import * as Plotly from 'plotly.js/dist/plotly.js';
+// @ts-ignore
+import {Config, Data, Layout} from 'plotly.js/dist/plotly.js';
 import {range} from "rxjs";
 import {HttpClient} from "@angular/common/http";
 import Map from 'ol/Map';
@@ -18,6 +20,7 @@ import {fromLonLat} from "ol/proj";
 import ImageLayer from "ol/layer/Image";
 import State from "ol/source/State";
 import Static from "ol/source/ImageStatic";
+import {PlotlyHTMLElement} from "plotly.js";
 
 
 // Transformation from image coordinate space to georeferenced coordinate space:
@@ -38,6 +41,8 @@ export class TestPlotlyComponent implements OnInit {
 
   public dataImage: string = '';
   public map: Map = new Map({});
+
+  private resultData: Result[] = [];
 
   ngOnInit(): void {
     const resultData: Result[] = [];
@@ -114,7 +119,7 @@ export class TestPlotlyComponent implements OnInit {
       x: range(0, z1[0].length - 1),
       y: range(-z1.length + 1, 0),
       'autocolorscale': false,
-      showscale: false,
+      // showscale: false,
       colorbar: {
         ticklen: 4,
         thickness: 20,
@@ -131,7 +136,7 @@ export class TestPlotlyComponent implements OnInit {
     this.setDivElementPlotLy(data_z1,[1,1,1,1,1,1],'',0);
   }
   public setDataZModify(result: Result[]) {
-
+    this.resultData = result;
     let z1:number[][] = result.sort((r1,r2)=>r2.rowId - r1.rowId).map(r=>r.result);
     let geoTransform = result[0].geoTransform
     let projection = result[0].projection
@@ -152,7 +157,7 @@ export class TestPlotlyComponent implements OnInit {
       // showlegend: false,
       // showline: false,
       // showgrid: false,
-      showscale: false,
+      // showscale: false,
       type: 'heatmap',
       x: range(1, z1[0].length),
       y: range(-z1.length, 1),
@@ -177,7 +182,7 @@ export class TestPlotlyComponent implements OnInit {
 
   public setDivElementPlotLy(dataZ : any, geoTransform: number[],projection:string,countPixel:number) {
     const el = <PlotlyHTMLElement>document.getElementById('plotly');
-    Plotly.newPlot(el, [dataZ], this.getLayoutForPlotLy(), {       displayModeBar: false,showAxisRangeEntryBoxes: false}).then(e=>{
+    Plotly.newPlot(el, [dataZ], this.getLayoutForPlotLy(), {       displayModeBar: false,showAxisRangeEntryBoxes: false}).then((e: { on: (arg0: string, arg1: (event: any) => void) => void; })=>{
           e.on('plotly_click',(event => {
             let valueX = event.points[0].x!== undefined ? Number.isInteger(event.points[0].x)?Number.parseInt(<string>event.points[0].x)+1:0:0;
             let valueY = event.points[0].y!== undefined ? Number.isInteger(event.points[0].y)?Number.parseInt(<string>event.points[0].y)+1:0:0;
@@ -212,7 +217,7 @@ export class TestPlotlyComponent implements OnInit {
       );
       Plotly.toImage(e,{format: "jpeg", height:300,width:300})
         .then(
-          (url) =>
+          (url: string) =>
           {
             this.dataImage = url;
           }
@@ -279,7 +284,82 @@ export class TestPlotlyComponent implements OnInit {
       // zoom: false
     } as Layout;
   }
+  public convertTo3D(){
+    const el = <PlotlyHTMLElement>document.getElementById('plotly');
 
+    console.log(el)
+    // @ts-ignore
+    const dataEl = el['data'][0];
+    dataEl.type = 'surface';
+    const MIN_VAL = -25, MAX_VAL = 25;
+    const layout = {
+      scene: {
+        zaxis: {
+          nticks: 20,
+          range: [ MIN_VAL, MAX_VAL ]
+        },
+      },
+      autosize: false,
+      width: 1024,
+      height: 720,
+      margin: { l: 0, r: 0, b: 50, t: 50, pad: 4 }
+    };
+
+    // @ts-ignore
+    console.log(dataEl.z)
+    const data = {
+      z : dataEl.z ,
+      // zmin: this.formPlot.minValueIndex, zmax: this.formPlot.maxValueIndex,
+      type: 'surface',
+      colorscale: dataEl.colorscale
+    };
+
+    // @ts-ignore
+    Plotly.newPlot('plotly', [data], layout).then((e: { on: (arg0: string, arg1: (event: any) => void) => void; })=>{
+      e.on('plotly_click',(event => {
+            let valueX = event.points[0].x!== undefined ? Number.isInteger(event.points[0].x)?Number.parseInt(<string>event.points[0].x)+1:0:0;
+            let valueY = event.points[0].y!== undefined ? Number.isInteger(event.points[0].y)?Number.parseInt(<string>event.points[0].y)+1:0:0;
+            let lengthZ = event.points[0].data.z.length;
+            let X :number = valueX;
+            let Y :number = lengthZ - valueY;
+            let xCoord = this.resultData[0].geoTransform[0] + (X * this.resultData[0].geoTransform[1]) + (Y * this.resultData[0].geoTransform[2]);
+            let yCoord = this.resultData[0].geoTransform[3] + (X * this.resultData[0].geoTransform[4]) + (Y * this.resultData[0].geoTransform[5]);
+
+            //Координаты в UTM
+            // console.log(X, Y);
+            // console.log(xCoord, yCoord);
+            //
+            // console.log(geoTransform);
+
+            //Площадь всей картинки
+            // console.log(countPixel*geoTransform[1]*geoTransform[5]);
+            //Площадь пикселя
+            // console.log(geoTransform[1]*geoTransform[5]);
+
+
+            // console.log(projection);
+            // const proj4 = (proj4x as any).default;
+            let coord = proj4(this.resultData[0].projection).inverse([xCoord,yCoord]);
+            // let coord = proj4('+proj=utm +zone=45n +datum=WGS84 +units=m +no_defs').inverse([xCoord,yCoord]);
+            // proj4(projection).inverse([487648, 6015073]);
+            console.log(coord);
+            console.log([xCoord,yCoord]);
+            this.callBack(fromLonLat(coord));
+          }
+        )
+      )});
+  }
+  // public convertTo2D() {
+  //   const el = <PlotHTMLElement>document.getElementById('plotly');
+  //   el.data[0].type = 'surface';
+  //   const data = {
+  //     z : el.data[0]['z'],
+  //     zmin: this.formPlot.minValueIndex, zmax: this.formPlot.maxValueIndex, type: 'heatmap',
+  //     x: range(0, el.data[0]['z'][0].length - 1), y: range(-el.data[0]['z'].length + 1, 0),
+  //     colorscale: el.data[0].colorscale
+  //   };
+  //   this.setDivElementPlotLy(data);
+  // }
 }
 export interface Result{
   rowId: number;

@@ -40,24 +40,14 @@ class APIRoutes(application: Application, spark: SparkSession, usersSocket: Arra
 
   def testSpark(): Future[Array[Order]] = Future {
 
-    def cramer: (Int, Array[Array[Double]])=> Double = (i, m) => {
-      m.length match {
-        case 1 => m(0)(0)
-        case _ =>
-          val nextI = i+1
-          val A:Array[Array[Double]] = m.drop(1).map(a=>{
-            val template = a.take(i) ++ a.drop(i+1)
-            template
-          })
-          val rootElement = (if (i%2==0)  m(0)(i) else - m(0)(i)) * cramer(0, A)
-          rootElement + (if (nextI==m.length) 0 else cramer(nextI, m))
-      }
-    }
-
     val ds1 = spark.sqlContext.sql(
-      "select rowId, projection, geoTransform, result " +
-        " from parquet.`/media/alex/058CFFE45C3C7827/maiskoe/2016/лето/parquet/ndvi/S2A_MSIL1C_20160611T051652_N0202_R062_T45UVA_20160611T051654_SAFE/*.parquet`")
-    ds1.show(2)
+      "select rowId, projection, geoTransform, collect_list(regression) result " +
+        " from (" +
+        " select * from parquet.`/media/alex/058CFFE45C3C7827/maiskoe/project/regression/*.parquet`" +
+        " order by rowId, colId" +
+        " ) " +
+        " group by rowId, projection, geoTransform" +
+        " ")
       ds1.collect().map(m=>Order(m.getInt(0),m.getString(1),m.getSeq[Double](2),m.getSeq[Double](3)))
   }
 
