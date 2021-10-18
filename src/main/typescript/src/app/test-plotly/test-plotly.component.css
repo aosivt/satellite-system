@@ -1,3 +1,15 @@
 .container{overflow:hidden;width:1900px}
 .box{white-space:nowrap}
 .box div{width:900px;display:inline-block;border:1px solid black}
+
+
+:host ::ng-deep div.ol-scale-line-inner {
+  border: 1px solid #b61313;
+  border-top: none;
+  color: #000000;
+  font-size: 20px;
+  text-align: center;
+  margin: 1px;
+  will-change: contents, width;
+  transition: all 0.25s;
+}
