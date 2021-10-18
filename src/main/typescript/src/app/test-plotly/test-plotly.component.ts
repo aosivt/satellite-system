@@ -494,6 +494,7 @@ export class TestPlotlyComponent implements OnInit {
   }
   public fieldOLMap(result: Result[]){
     const vectorSource = new VectorSource();
+    const vectorSource2 = new VectorSource();
 
     const myStyle = new Style({
       image: new CircleStyle({
@@ -506,11 +507,19 @@ export class TestPlotlyComponent implements OnInit {
     })
     result.forEach((r, Y)=>{
         r.result.forEach((r2,X)=>{
-          if (!isNaN(r2) && r2>0.1){
-            const p = new Feature(new Point(this.getCoordinateForViewFromGeoTransform(X,result.length - Y,r.geoTransform,r.projection),{
-              style: myStyle
-            }));
-            vectorSource.addFeature(p)
+          if (!isNaN(r2)){
+            if (r2 > 0.15 && r2 < 0.3){
+              const p = new Feature(new Point(this.getCoordinateForViewFromGeoTransform(X,result.length - Y,r.geoTransform,r.projection),{
+                style: myStyle
+              }));
+              vectorSource.addFeature(p)
+            }
+            else if (r2 > 0.1 && r2 < 0.15){
+              const p = new Feature(new Point(this.getCoordinateForViewFromGeoTransform(X,result.length - Y,r.geoTransform,r.projection),{
+                style: myStyle
+              }));
+              vectorSource2.addFeature(p)
+            }
           }
         });
     });
@@ -526,7 +535,19 @@ export class TestPlotlyComponent implements OnInit {
           },
         },
       });
+    var pointsLayer2 =  new WebGLPointsLayer({
+      source: vectorSource2,
+      style: {
+        symbol: {
+          symbolType: 'circle',
+          size: 2,
+          color: 'rgb(0,255,42)',
+          opacity: 0.5,
+        },
+      },
+    });
     this.map.addLayer(pointsLayer);
+    this.map.addLayer(pointsLayer2);
   }
   public viewSqOnOLFromResult(result: Result[]){
     const vectorSource = new VectorSource();
