@@ -9,24 +9,23 @@ import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.settings.RoutingSettings
 import org.apache.spark.sql.SparkSession
 import org.satellite.system.core.Application
-import spray.json.{DefaultJsonProtocol, JsString, JsValue, jsonWriter}
+import spray.json.{DefaultJsonProtocol, JsString, JsValue, RootJsonFormat, jsonWriter}
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 
 import scala.collection.immutable.Seq
 import org.apache.spark.sql.Encoders
 import org.satellite.system.Main.materializer.executionContext
+import org.satellite.system.core.db.table.Bank
 import spray.json.DefaultJsonProtocol.{CharJsonFormat, JsValueFormat, RootJsArrayFormat, StringJsonFormat, arrayFormat}
 
 import scala.concurrent.Future
-
-
 
 final case class Order(rowId: Int, projection: String, geoTransform: scala.Seq[Double], result: scala.Seq[Double])
 
 // collect your json format instances into a support trait:
 trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
-
   implicit val orderFormat = jsonFormat4(Order) // contains List[Item]
+
 }
 
 /**
@@ -88,13 +87,6 @@ class APIRoutes(application: Application, spark: SparkSession, usersSocket: Arra
         ))
       }
     }
-  }
-
-  case class PlotlyData(rowId: Int, result: Array[Double])
-
-  object PlotlyDataEncoders {
-    implicit def PlotlyDataEncoder: org.apache.spark.sql.Encoder[String] =
-      org.apache.spark.sql.Encoders.kryo[String]
   }
 
 }

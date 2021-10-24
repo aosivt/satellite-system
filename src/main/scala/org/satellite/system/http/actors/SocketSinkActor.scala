@@ -24,7 +24,7 @@ class SocketSinkActor(socketActorProps: Props,usersSocket: Array[ActorRef])(impl
       usersSocket(0) = user
       unstashAll()
       context.become {
-        case TextMessage.Strict(data)        => user ! JsonParser(data)
+        case TextMessage.Strict(data)        => user ! JsonParser("{\"output\":\"template\"}")
         case BinaryMessage.Strict(_)         => // ignore
         case TextMessage.Streamed(stream)    => stream.runWith(Sink.ignore)
         case BinaryMessage.Streamed(stream)  => stream.runWith(Sink.ignore)

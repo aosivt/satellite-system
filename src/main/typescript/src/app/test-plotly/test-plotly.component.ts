@@ -167,7 +167,13 @@ export class TestPlotlyComponent implements OnInit {
     zoom: 5
   });
 
+  public clickTestSocket(): void{
+
+    this.ws.send('{"data":"data"}');
+  }
+
   ngOnInit(): void {
+
     const resultData: Result[] = [];
     this.ws.onopen = () => {
       this.ws.onmessage = (event) => {

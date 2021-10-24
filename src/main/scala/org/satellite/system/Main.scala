@@ -1,17 +1,22 @@
 package org.satellite.system
 
 import akka.actor.{ActorSystem, Props}
+import akka.event.Logging
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.Directives._
 import org.apache.spark.sql.SparkSession
 
 import scala.io.StdIn
 import org.satellite.system.core.Application
+import org.satellite.system.core.db.SatelliteSystemDataBase
+import org.satellite.system.core.db.table.{ArticleTable, BankTable, articles, banks}
 import org.satellite.system.web._
 import org.satellite.system.http.{SPAWebServer, SocketWebServer}
 
 import scala.concurrent.duration._
+import org.satellite.system.core.db.SatelliteSystemPgProfile.api._
 
+import scala.concurrent.Await
 /**
   * The Main class that bootstraps the application.
   */
@@ -28,15 +33,21 @@ object Main extends App with SPAWebServer with SocketWebServer {
   private val stopOnReturn = app.config.getBoolean("http.stop-on-return")
   private val keepAliveInSec = app.config.getInt("http.webSocket.keep-alive")
 
-
+  val db = SatelliteSystemDataBase.apply()
 
   override implicit val system: ActorSystem = app.system
   override val socketActorProps: Props = SocketActor.props()
   override val keepAliveTimeout: FiniteDuration = keepAliveInSec.seconds
 
   private val apiRoutes = new APIRoutes(app, spark, usersSocket)
+  private val apiBankRoutes = new BankRouters(app, db)
 
-  override val routes: Route = apiRoutes.routes ~ super.routes
+  override val routes: Route = apiRoutes.routes ~ apiBankRoutes.routes ~ super.routes
+
+//  Await.result({
+//    db.run(banks.result).map(_.foreach(row =>
+//      println("song with id " + row.id)))
+//  }, 1 minute)
 
   start(host, port) foreach { _ =>
     if (stopOnReturn) {
