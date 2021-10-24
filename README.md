@@ -8,6 +8,7 @@ Stack technology:
   - Akka Http
   - Apache Spark
   - Apache Parquet
+  - Slick for connect to postgresql
 - Frontend:
   - Angular 12
 
