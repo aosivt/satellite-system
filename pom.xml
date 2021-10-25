@@ -26,7 +26,7 @@
         <cats.version>1.0.1</cats.version>
         <hikariCP.version>2.7.7</hikariCP.version>
         <postgres.driver.version>42.2.1</postgres.driver.version>
-        <fly.way.version>5.0.7</fly.way.version>
+        <flyway.version>7.15.0</flyway.version>
         <slick.version>3.3.3</slick.version>
         <slick.pg.version>0.19.7</slick.pg.version>
     </properties>
@@ -148,8 +148,9 @@
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
-            <version>${fly.way.version}</version>
+            <version>${flyway.version}</version>
         </dependency>
+
         <dependency>
             <groupId>com.typesafe.slick</groupId>
             <artifactId>slick_${scala.binary.version}</artifactId>
@@ -177,8 +178,29 @@
         </dependency>
     </dependencies>
 
+
     <build>
+
         <plugins>
+            <plugin>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-maven-plugin</artifactId>
+                <version>${flyway.version}</version>
+                <configuration>
+                    <driver>org.postgresql.Driver</driver>
+                    <url>jdbc:postgresql://localhost:5432/ss</url>
+                    <password>postgres</password>
+                    <user>postgres</user>
+                    <connectRetries>10</connectRetries>
+                    <initSql>SET ROLE 'postgres'</initSql>
+                    <schemas>
+                        <schema>dim</schema>
+                        <schema>project</schema>
+                        <schema>wrk</schema>
+                    </schemas>
+                    <createSchemas>true</createSchemas>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.scala-tools</groupId>
                 <artifactId>maven-scala-plugin</artifactId>
@@ -225,10 +247,7 @@
                         </goals>
                     </execution>
                 </executions>
-
             </plugin>
-
-
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
