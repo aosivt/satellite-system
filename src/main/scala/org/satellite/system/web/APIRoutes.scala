@@ -13,10 +13,7 @@ import spray.json.{DefaultJsonProtocol, JsString, JsValue, RootJsonFormat, jsonW
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 
 import scala.collection.immutable.Seq
-import org.apache.spark.sql.Encoders
 import org.satellite.system.Main.materializer.executionContext
-import org.satellite.system.core.db.table.Bank
-import spray.json.DefaultJsonProtocol.{CharJsonFormat, JsValueFormat, RootJsArrayFormat, StringJsonFormat, arrayFormat}
 
 import scala.concurrent.Future
 

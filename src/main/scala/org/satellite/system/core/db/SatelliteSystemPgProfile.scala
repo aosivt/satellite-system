@@ -25,6 +25,7 @@ trait SatelliteSystemPgProfile extends ExPostgresProfile
     with SearchImplicits
     with SearchAssistants {
     implicit val strListTypeMapper = new SimpleArrayJdbcType[String]("text").to(_.toList)
+    implicit val doubleListTypeMapper = new SimpleArrayJdbcType[Double]("text").to(_.toList)
   }
 }
 

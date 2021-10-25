@@ -9,7 +9,6 @@ import org.apache.spark.sql.SparkSession
 import scala.io.StdIn
 import org.satellite.system.core.Application
 import org.satellite.system.core.db.SatelliteSystemDataBase
-import org.satellite.system.core.db.table.{ArticleTable, BankTable, articles, banks}
 import org.satellite.system.web._
 import org.satellite.system.http.{SPAWebServer, SocketWebServer}
 
@@ -40,14 +39,9 @@ object Main extends App with SPAWebServer with SocketWebServer {
   override val keepAliveTimeout: FiniteDuration = keepAliveInSec.seconds
 
   private val apiRoutes = new APIRoutes(app, spark, usersSocket)
-  private val apiBankRoutes = new BankRouters(app, db)
+  private val apiSatelliteImageRoutes = new SatelliteImageRouters(app, db)
 
-  override val routes: Route = apiRoutes.routes ~ apiBankRoutes.routes ~ super.routes
-
-//  Await.result({
-//    db.run(banks.result).map(_.foreach(row =>
-//      println("song with id " + row.id)))
-//  }, 1 minute)
+  override val routes: Route = apiRoutes.routes ~ apiSatelliteImageRoutes.routes ~ super.routes
 
   start(host, port) foreach { _ =>
     if (stopOnReturn) {

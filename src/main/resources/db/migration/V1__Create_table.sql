@@ -34,7 +34,7 @@ create unique index file_file_path_uindex
 
 alter table wrk.file
     add constraint file_pk
-        primary key (file_path);
+        primary key (file_id);
 
 
 create table wrk.indexes
@@ -105,4 +105,26 @@ INSERT INTO wrk.indexes (index_id, name, script) VALUES (DEFAULT, 'ndvi'::varcha
                      case when ((dataNIR[7]-dataRed[7]) / (dataNIR[7]+dataRed[7])) is null then 0 else ((dataNIR[0]-dataRed[7]) / (dataNIR[0]+dataRed[7])) end,
                      case when ((dataNIR[8]-dataRed[8]) / (dataNIR[8]+dataRed[8])) is null then 0 else ((dataNIR[0]-dataRed[8]) / (dataNIR[0]+dataRed[8])) end
                      ) ndvi
-                     from parquet.`{parquet_place}/*.parquet`'::text)
+                     from parquet.`{parquet_place}*.parquet`'::text);
+
+insert into wrk.file (file_id,file_path) values (DEFAULT, '/media/alex/058CFFE45C3C7827/maiskoe/2016/лето/parquet/S2A_MSIL1C_20160604T052652_N0202_R105_T45UVA_20160604T052842_SAFE/'::text);
+insert into wrk.file (file_id,file_path) values (DEFAULT, '/media/alex/058CFFE45C3C7827/maiskoe/2016/лето/parquet/S2A_MSIL1C_20160611T051652_N0202_R062_T45UVA_20160611T051654_SAFE/'::text);
+insert into wrk.file (file_id,file_path) values (DEFAULT, '/media/alex/058CFFE45C3C7827/maiskoe/2017/лето/parquet/S2A_MSIL1C_20170527T051651_N0205_R062_T45UVA_20170527T051809_SAFE/'::text);
+insert into wrk.file (file_id,file_path) values (DEFAULT, '/media/alex/058CFFE45C3C7827/maiskoe/2017/лето/parquet/S2A_MSIL1C_20170616T051651_N0205_R062_T45UVA_20170616T051835_SAFE/'::text);
+insert into wrk.file (file_id,file_path) values (DEFAULT, '/media/alex/058CFFE45C3C7827/maiskoe/2017/лето/parquet/S2A_MSIL1C_20170828T052651_N0205_R105_T45UVA_20170828T053055/'::text);
+
+insert into wrk.file (file_id,file_path) values (DEFAULT, '/media/alex/058CFFE45C3C7827/maiskoe/2018/лето/parquet/S2A_MSIL1C_20180711T051651_N0206_R062_T45UVA_20180711T083042_SAFE/'::text);
+insert into wrk.file (file_id,file_path) values (DEFAULT, '/media/alex/058CFFE45C3C7827/maiskoe/2018/лето/parquet/S2A_MSIL1C_20180810T051651_N0206_R062_T45UVA_20180810T084918_SAFE/'::text);
+insert into wrk.file (file_id,file_path) values (DEFAULT, '/media/alex/058CFFE45C3C7827/maiskoe/2018/лето/parquet/S2B_MSIL1C_20180619T052649_N0206_R105_T45UVA_20180619T082046_SAFE/'::text);
+insert into wrk.file (file_id,file_path) values (DEFAULT, '/media/alex/058CFFE45C3C7827/maiskoe/2018/лето/parquet/S2B_MSIL1C_20180709T052649_N0206_R105_T45UVA_20180709T082036_SAFE/'::text);
+insert into wrk.file (file_id,file_path) values (DEFAULT, '/media/alex/058CFFE45C3C7827/maiskoe/2019/лето/parquet/S2A_MSIL1C_20190507T051651_N0207_R062_T45UVA_20190507T083105_SAFE/'::text);
+insert into wrk.file (file_id,file_path) values (DEFAULT, '/media/alex/058CFFE45C3C7827/maiskoe/2019/лето/parquet/S2A_MSIL1C_20190818T052651_N0208_R105_T45UVA_20190818T083140_SAFE/'::text);
+insert into wrk.file (file_id,file_path) values (DEFAULT, '/media/alex/058CFFE45C3C7827/maiskoe/2019/лето/parquet/S2B_MSIL1C_20190505T052659_N0207_R105_T45UVA_20190505T082217_SAFE/'::text);
+insert into wrk.file (file_id,file_path) values (DEFAULT, '/media/alex/058CFFE45C3C7827/maiskoe/2019/лето/parquet/S2B_MSIL1C_20190813T052649_N0208_R105_T45UVA_20190813T080801_SAFE/'::text);
+insert into wrk.file (file_id,file_path) values (DEFAULT, '/media/alex/058CFFE45C3C7827/maiskoe/2020/лето/parquet/S2A_MSIL1C_20200421T051651_N0209_R062_T45UVA_20200421T071339_SAFE/'::text);
+insert into wrk.file (file_id,file_path) values (DEFAULT, '/media/alex/058CFFE45C3C7827/maiskoe/2020/лето/parquet/S2A_MSIL1C_20200809T051701_N0209_R062_T45UVA_20200809T072208_SAFE/'::text);
+insert into wrk.file (file_id,file_path) values (DEFAULT, '/media/alex/058CFFE45C3C7827/maiskoe/2020/лето/parquet/S2B_MSIL1C_20200419T052639_N0209_R105_T45UVA_20200419T081204_SAFE/'::text);
+insert into wrk.file (file_id,file_path) values (DEFAULT, '/media/alex/058CFFE45C3C7827/maiskoe/2020/лето/parquet/S2B_MSIL1C_20200817T052649_N0209_R105_T45UVA_20200817T073431_SAFE/'::text);
+
+insert into dim.satellite_image (file_id, geo_transform, projection, name) values (1,'{399960.0,10.0,0.0,6100020.0,0.0,-10.0}','PROJCS["WGS 84 / UTM zone 45N",GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse_Mercator"],PARAMETER["latitude_of_origin",0],PARAMETER["central_meridian",87],PARAMETER["scale_factor",0.9996],PARAMETER["false_easting",500000],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Easting",EAST],AXIS["Northing",NORTH],AUTHORITY["EPSG","32645"]]'::text,'S2A_MSIL1C_20160604T052652_N0202_R105_T45UVA_20160604T052842_SAFE');
+insert into dim.satellite_image (file_id, geo_transform, projection, name) values (2,'{399960.0,10.0,0.0,6100020.0,0.0,-10.0}','PROJCS["WGS 84 / UTM zone 45N",GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse_Mercator"],PARAMETER["latitude_of_origin",0],PARAMETER["central_meridian",87],PARAMETER["scale_factor",0.9996],PARAMETER["false_easting",500000],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Easting",EAST],AXIS["Northing",NORTH],AUTHORITY["EPSG","32645"]]'::text,'S2A_MSIL1C_20160611T051652_N0202_R062_T45UVA_20160611T051654_SAFE');
