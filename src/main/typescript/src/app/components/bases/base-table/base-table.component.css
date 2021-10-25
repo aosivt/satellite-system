@@ -1,0 +1,145 @@
+.base-table-container {
+  min-width: max-content;
+  min-height: 80vh;
+}
+
+.base-table-content-card {
+  min-width: max-content;
+}
+
+.base-table-slide-content-card {
+  min-width: max-content;
+  min-height: 86.5vh;
+}
+
+.base-table-sidenav-content {
+  margin-right: 0;
+}
+
+/* Structure */
+.base-table-card-content-example-container {
+  position: relative;
+  min-height: 200px;
+}
+
+.base-table-table-container {
+  position: relative;
+  max-height: 400px;
+  overflow: auto;
+}
+
+table {
+  width: max-content;
+}
+
+.base-table-loading-shade {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 56px;
+  right: 0;
+  background: rgba(0, 0, 0, 0.15);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.example-rate-limit-reached {
+  color: #980000;
+  max-width: 360px;
+  text-align: center;
+}
+
+/* Column Widths */
+.mat-column-number,
+.mat-column-state {
+  max-width: 64px;
+}
+
+.base-table-table-container {
+  position: relative;
+  max-height: 75vh;
+  min-height: 75vh;
+  overflow: auto;
+}
+
+.mat-column-created {
+  max-width: 124px;
+}
+
+.mat-cell {
+  font-size: 12px;
+}
+
+.mat-row {
+  height: 35px;
+}
+.mat-row .mat-cell {
+  border-bottom: 1px solid transparent;
+  border-top: 1px solid transparent;
+  cursor: pointer;
+}
+
+.mat-row:hover .mat-cell {
+  border-color: currentColor;
+}
+
+
+form .mat-form-field {
+  display: table-row;
+}
+
+.selected-item {
+  background-color: #80B8BA;
+}
+
+.other-item {
+  background-color: #1756b9;
+}
+
+.error-item {
+  background-color: #fdcaca;
+}
+
+.error-item.selected-item {
+  background-color: #3ca38e;
+}
+
+.red-item {
+  background-color: #ff0707;
+}
+
+.green-item {
+  background-color: #56ff00;
+}
+
+.blue-item {
+  background-color: #003aff;
+}
+
+.light-blue-item {
+  background-color: #acbdf1;
+}
+
+.yellow-item {
+  background-color: #ffe500;
+}
+
+.black-item {
+  background-color: black;
+}
+
+.gray-item {
+  background-color: #80b8ba;
+}
+
+
+/*---- Remove default browser behaviour after selecting cells ----*/
+.selected, .unselected {
+  -webkit-user-select: none; /* Webkit  */
+  -moz-user-select: none; /* Firefox */
+  -ms-user-select: none; /* IE 10   */
+  -o-user-select: none; /* Opera   */
+  user-select: none;
+}

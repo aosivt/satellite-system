@@ -1,0 +1,9 @@
+<h1 mat-dialog-title>{{title}}</h1>
+<div mat-dialog-content [style.max-height.%]=65 [style.min-height.%]=65>
+  <mat-list *ngFor="let errorData of data">
+    <mat-list-item> {{errorData.message}} </mat-list-item>
+  </mat-list>
+</div>
+<div mat-dialog-actions>
+  <button mat-button (click)="close()">Закрыть</button>
+</div>

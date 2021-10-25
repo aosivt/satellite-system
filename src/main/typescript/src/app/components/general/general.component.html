@@ -1,0 +1,18 @@
+<button mat-button [matMenuTriggerFor]="menu">Меню</button>
+<button mat-button [matMenuTriggerFor]="about">Помощь</button>
+<mat-menu #menu="matMenu">
+  <button mat-menu-item [matMenuTriggerFor]="dim">Справочники</button>
+  <button mat-menu-item (click)="router.navigateByUrl('map')">Карта</button>
+  <button mat-menu-item>Диаграммы</button>
+</mat-menu>
+
+<mat-menu #dim="matMenu">
+  <button mat-menu-item>Снимки</button>
+  <button mat-menu-item>Проекты</button>
+  <button mat-menu-item>Спутники</button>
+  <button mat-menu-item>Индексы</button>
+</mat-menu>
+
+<mat-menu #about="matMenu">
+  <button mat-menu-item (click)="openAbout()">О программе</button>
+</mat-menu>

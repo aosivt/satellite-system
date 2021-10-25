@@ -36,7 +36,7 @@
               "node_modules/plotly.js/dist/plotly.js"
             ],
             "allowedCommonJsDependencies": [
-              "plotly.js"
+              "plotly.js","lodash"
             ]
           },
           "configurations": {
