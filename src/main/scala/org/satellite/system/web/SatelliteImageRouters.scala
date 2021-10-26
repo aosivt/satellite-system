@@ -9,36 +9,29 @@ import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.server.Directives.{as, complete, concat, delete, entity, get, onComplete, options, pathPrefix, post, put, respondWithHeader, respondWithHeaders}
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.settings.RoutingSettings
-import org.apache.spark.sql.SparkSession
-import org.satellite.system.Main.db
-import org.satellite.system.Main.materializer.executionContext
 import org.satellite.system.core.Application
-import org.satellite.system.core.db.SatelliteSystemPgProfile
-import org.satellite.system.core.db.table.{SatelliteImage, SatelliteImageService}
+import org.satellite.system.core.db.{DBComponent, SatelliteSystemPgProfile}
+import org.satellite.system.core.db.table.{File, SatelliteImage, SatelliteImageRepository}
 import spray.json.{DefaultJsonProtocol, JsString, JsValue, RootJsonFormat}
 
 import scala.collection.immutable.Seq
-import scala.concurrent.Future
-import org.satellite.system.core.db.SatelliteSystemPgProfile.api._
 
 trait SatelliteImageJsonSupport extends SprayJsonSupport with DefaultJsonProtocol{
   implicit val satelliteImageFormat: RootJsonFormat[SatelliteImage] = jsonFormat6(SatelliteImage) // contains List[Item]
+  implicit val fileFormat: RootJsonFormat[File] = jsonFormat2(File) // contains List[Item]
 }
 
 
-class SatelliteImageRouters(application: Application,db: SatelliteSystemPgProfile.backend.DatabaseDef) extends SatelliteImageJsonSupport{
+class SatelliteImageRouters(application: Application) extends SatelliteImageJsonSupport with SatelliteImageRepository with DBComponent{
+
   implicit val settings: RoutingSettings = RoutingSettings.apply(application.config)
-
-  def getAll(): Future[Array[SatelliteImage]] =
-    db.run(SatelliteImageService.result
-      .map(r=>r.map(row=>SatelliteImage(row.id,row.fileId,row.geoTransform,row.projection,row.name,row.satelliteId)).toArray))
-
+  import driver.api._
   def routes: Route = {
     pathPrefix("SatelliteImage") {
       respondWithHeader(RawHeader("Access-Control-Allow-Origin", "*")) {
         Route.seal(concat(
           get {
-            onComplete(getAll()){
+            onComplete(getSatelliteImageWithFile()){
               result => complete(result)
             }
           },
@@ -52,9 +45,9 @@ class SatelliteImageRouters(application: Application,db: SatelliteSystemPgProfil
               complete(JsString("OK PUT"))
             }
           },
-          delete {
-            complete(StatusCodes.OK)
-          },
+//          delete {
+//            complete(StatusCodes.OK)
+//          },
           options {
             val corsHeaders: Seq[HttpHeader] = Seq(
               RawHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS"),
@@ -68,4 +61,6 @@ class SatelliteImageRouters(application: Application,db: SatelliteSystemPgProfil
       }
     }
   }
+
+
 }

@@ -13,9 +13,6 @@ import org.satellite.system.web._
 import org.satellite.system.http.{SPAWebServer, SocketWebServer}
 
 import scala.concurrent.duration._
-import org.satellite.system.core.db.SatelliteSystemPgProfile.api._
-
-import scala.concurrent.Await
 /**
   * The Main class that bootstraps the application.
   */
@@ -33,13 +30,12 @@ object Main extends App with SPAWebServer with SocketWebServer {
   private val keepAliveInSec = app.config.getInt("http.webSocket.keep-alive")
 
   val db = SatelliteSystemDataBase.apply()
-
   override implicit val system: ActorSystem = app.system
   override val socketActorProps: Props = SocketActor.props()
   override val keepAliveTimeout: FiniteDuration = keepAliveInSec.seconds
 
   private val apiRoutes = new APIRoutes(app, spark, usersSocket)
-  private val apiSatelliteImageRoutes = new SatelliteImageRouters(app, db)
+  private val apiSatelliteImageRoutes = new SatelliteImageRouters(app)
 
   override val routes: Route = apiRoutes.routes ~ apiSatelliteImageRoutes.routes ~ super.routes
 
