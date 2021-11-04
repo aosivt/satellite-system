@@ -11,12 +11,13 @@ import org.satellite.system.core.Application
 import org.satellite.system.core.db.SatelliteSystemDataBase
 import org.satellite.system.web._
 import org.satellite.system.http.{SPAWebServer, SocketWebServer}
+import org.satellite.system.services.{SocketConnector}
 
 import scala.concurrent.duration._
 /**
   * The Main class that bootstraps the application.
   */
-object Main extends App with SPAWebServer with SocketWebServer {
+object Main extends App with SPAWebServer with SocketWebServer with SocketConnector {
 
   implicit val app: Application = Application()
   implicit val spark: SparkSession = SparkSession.builder
@@ -29,6 +30,7 @@ object Main extends App with SPAWebServer with SocketWebServer {
   private val stopOnReturn = app.config.getBoolean("http.stop-on-return")
   private val keepAliveInSec = app.config.getInt("http.webSocket.keep-alive")
 
+
   val db = SatelliteSystemDataBase.apply()
   override implicit val system: ActorSystem = app.system
   override val socketActorProps: Props = SocketActor.props()
@@ -38,6 +40,8 @@ object Main extends App with SPAWebServer with SocketWebServer {
   private val apiSatelliteImageRoutes = new SatelliteImageRouters(app)
 
   override val routes: Route = apiRoutes.routes ~ apiSatelliteImageRoutes.routes ~ super.routes
+
+  initSocket()
 
   start(host, port) foreach { _ =>
     if (stopOnReturn) {

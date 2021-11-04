@@ -1,8 +1,5 @@
 package org.satellite.system.web
 
-import akka.actor.ActorRef
-import akka.actor.TypedActor.context
-import akka.event.Logging
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model.{HttpHeader, StatusCodes}
 import akka.http.scaladsl.model.headers.RawHeader
@@ -10,7 +7,7 @@ import akka.http.scaladsl.server.Directives.{as, complete, concat, delete, entit
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.settings.RoutingSettings
 import org.satellite.system.core.Application
-import org.satellite.system.core.db.{DBComponent, SatelliteSystemPgProfile}
+import org.satellite.system.core.db.DBComponent
 import org.satellite.system.core.db.table.{File, SatelliteImage, SatelliteImageRepository}
 import spray.json.{DefaultJsonProtocol, JsString, JsValue, RootJsonFormat}
 
@@ -25,13 +22,12 @@ trait SatelliteImageJsonSupport extends SprayJsonSupport with DefaultJsonProtoco
 class SatelliteImageRouters(application: Application) extends SatelliteImageJsonSupport with SatelliteImageRepository with DBComponent{
 
   implicit val settings: RoutingSettings = RoutingSettings.apply(application.config)
-  import driver.api._
   def routes: Route = {
     pathPrefix("SatelliteImage") {
       respondWithHeader(RawHeader("Access-Control-Allow-Origin", "*")) {
         Route.seal(concat(
           get {
-            onComplete(getSatelliteImageWithFile()){
+            onComplete(getAllSatelliteImageWithFile){
               result => complete(result)
             }
           },
