@@ -3,6 +3,9 @@ package org.satellite.system.image.converter.core;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.satellite.system.image.converter.Main;
+import org.satellite.system.image.converter.exceptions.EmptyMainProperties;
+
 import static org.junit.Assert.*;
 
 import java.io.IOException;
@@ -25,13 +28,24 @@ public class TestOptionsImageConverters {
     }
     @Test
     public void testGetSatelliteNames(){
-        final var prefixes = options.getPrefixes();
+        final var prefixes = options.getExistsPrefix();
         final var existsBands = options.getExistsBands();
         final var satelliteNames = options.getSatelliteNames();
         final var allPostfixExistsBands = options.getAllPostfixExistsBands();
         final var existsBandsBySatelliteName = options.getExistsBandsBySatelliteName(TEST_NAME_SATELLITE);
         assertTrue(allPostfixExistsBands.contains(TEST_NAME_BAND));
-        assertTrue(List.of(satelliteNames).contains(TEST_NAME_SATELLITE));
-        assertTrue(List.of(existsBandsBySatelliteName).contains(TEST_NAME_BAND));
+        assertTrue(satelliteNames.contains(TEST_NAME_SATELLITE));
+        assertTrue(existsBandsBySatelliteName.contains(TEST_NAME_BAND));
+    }
+    @Test
+    public void testEmptyException() {
+        boolean thrown = false;
+        try {
+            OptionsImageConverters options = new OptionsImageConverters(Objects.requireNonNull(Main.class.getClassLoader()
+                    .getResource("empty.properties")).getPath());
+        } catch (EmptyMainProperties e){
+            thrown = true;
+        }
+        assertTrue(true);
     }
 }
