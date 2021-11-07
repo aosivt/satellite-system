@@ -51,3 +51,4 @@ Thumbs.db
 /src/main/typescript/package-lock.json
 /image-converter/image-converter.iml
 /ss.iml
+/ss-image-service/src/main/typescript/package-lock.json
