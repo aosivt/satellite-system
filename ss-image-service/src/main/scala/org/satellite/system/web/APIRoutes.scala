@@ -37,9 +37,14 @@ class APIRoutes(application: Application, spark: SparkSession, usersSocket: Arra
   def testSpark(): Future[Array[Order]] = Future {
 
     val ds1 = spark.sqlContext.sql(
-      "select rowId, projection, geoTransform, collect_list(regression) result " +
+      "select rowId, projection, geoTransform, collect_list(data) result " +
         " from (" +
-        " select * from parquet.`/media/alex/058CFFE45C3C7827/maiskoe/project/regression/*.parquet`" +
+        " select " +
+        " (case when indArray < 3 then rowId - 1 when 3 <= indArray and indArray < 6 then rowId when 6 <= indArray  then rowId + 1 end) rowId, " +
+        " (case when array_contains(Array(0,3,6),indArray) then colId - 1 when array_contains(Array(2,5,8),indArray) then colId + 1 else colId end)  colId, " +
+        " width, height, projection, geoTransform, data, projection" +
+        " from parquet.`/media/alex/058CFFE45C3C7827/ss/images_temp/S2A_MSIL1C_20160106T053222_N0201_R105_T45UVA_20160106T053218/*.parquet`" +
+        " lateral view posexplode(dataRed) results AS indArray, data " +
         " order by rowId, colId" +
         " ) " +
         " group by rowId, projection, geoTransform" +

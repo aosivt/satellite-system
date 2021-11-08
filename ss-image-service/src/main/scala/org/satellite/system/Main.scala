@@ -13,6 +13,7 @@ import org.satellite.system.web._
 import org.satellite.system.http.{SPAWebServer, SocketWebServer}
 import org.satellite.system.services.{SparkSocket, SparkSocketService}
 
+import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
 /**
   * The Main class that bootstraps the application.
@@ -37,6 +38,11 @@ object Main extends App with SPAWebServer with SocketWebServer {
   override val keepAliveTimeout: FiniteDuration = keepAliveInSec.seconds
 
   private val apiRoutes = new APIRoutes(app, spark, usersSocket)
+  apiRoutes.routes.idleTimeout(FiniteDuration.apply(2,TimeUnit.MINUTES))
+  apiRoutes.routes.initialTimeout(FiniteDuration.apply(2,TimeUnit.MINUTES))
+  apiRoutes.routes.completionTimeout(FiniteDuration.apply(2,TimeUnit.MINUTES))
+  apiRoutes.routes.backpressureTimeout(FiniteDuration.apply(2,TimeUnit.MINUTES))
+
   private val apiSatelliteImageRoutes = new SatelliteImageRouters(app)
 
   override val routes: Route = apiRoutes.routes ~ apiSatelliteImageRoutes.routes ~ super.routes
