@@ -1,22 +1,87 @@
 package org.satellite.system.services
 
+import akka.actor.{Actor, ActorSystem, Props}
+import akka.io.Tcp.{Bind, Bound, CommandFailed, Connected, Register}
+import akka.io.{IO, Tcp}
+import org.apache.avro.io.Encoder
 import org.apache.spark.internal.Logging
 import org.apache.spark.network.util.JavaUtils
+import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
 import org.apache.spark.sql.streaming.DataStreamReader
-import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
+import org.apache.spark.sql.{DataFrame, Dataset, Encoders, Row, SparkSession}
 import org.apache.spark.sql.functions.{explode, split}
+import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.apache.spark.streaming.receiver.Receiver
 import org.satellite.system.core.Application
+import org.satellite.system.image.converter.core.DtoSparkImagePart
 
 import java.io.{BufferedInputStream, BufferedOutputStream, BufferedReader, DataOutputStream, IOException, InputStream, InputStreamReader, OutputStream, PrintStream, PrintWriter}
-import java.net.{ServerSocket, Socket, SocketException, SocketImpl, SocksSocketImpl}
+import java.net.{InetSocketAddress, ServerSocket, Socket, SocketException, SocketImpl, SocksSocketImpl}
 import java.nio.charset.StandardCharsets
+import scala.annotation.tailrec
+import scala.concurrent.{ExecutionContext, Future}
+import scala.language.implicitConversions
+import scala.util.Try
 
 //object SparkSocket{
 //  def apply(spark: SparkSession, app: Application): SparkSocket = new SparkSocket(spark, app)
 //}
+
+class SimplisticHandler extends Actor {
+  import Tcp._
+  def receive = {
+    case Received(data) => {
+      try {
+        val t = deserialize(data.toArray).asInstanceOf[DtoSparkImagePart]
+        if (t.getRowId==0){
+          context.stop(self)
+        }
+        print(t.getRowId)
+
+      }catch {
+        case e:Exception => print(e)
+      }
+
+    }
+
+    case PeerClosed     =>
+//      context.stop(self)
+  }
+  import java.io.ByteArrayInputStream
+  import java.io.IOException
+  import java.io.ObjectInputStream
+
+  @throws[IOException]
+  @throws[ClassNotFoundException]
+  def deserialize(data: Array[Byte]): Any = {
+    val in = new ByteArrayInputStream(data)
+    val is = new ObjectInputStream(in)
+    is.readObject
+  }
+}
+
+class TCPServer extends Actor {
+
+  import akka.stream.javadsl.Tcp._
+  import context.system
+
+  IO(Tcp) ! Bind(self, new InetSocketAddress("localhost", 9999))
+
+  def receive: Receive = {
+    case b @ Bound(_) =>
+      context.parent ! b
+
+    case CommandFailed(_: Bind) => context.stop(self)
+
+    case c @ Connected(remote, local) =>
+      val handler = context.actorOf(Props[SimplisticHandler]())
+      val connection = sender()
+      connection ! Register(handler)
+
+  }
+}
 
 
 case class SparkServerSocket(port: Int) extends ServerSocket(port) with Serializable{
@@ -47,9 +112,21 @@ case class SparkClientSocket(socket: SocketImpl) extends Socket(socket) with Ser
 //  override def isClosed: Boolean = false
 }
 
-class SparkSocket()(implicit spark: SparkSession) extends Serializable {
+class SparkSocket()(implicit spark: SparkSession, system: ActorSystem) extends Serializable {
+import spark.implicits._
+//  val encoder: ExpressionEncoder[DtoSparkImagePart] = ExpressionEncoder()
+type MyObjEncoded = (Int, Int)
+implicit val encoder = Encoders.javaSerialization[DtoSparkImagePart]
 
-//  implicit val spark: SparkSession
+  // implicit conversions
+implicit def toEncoded(o: DtoSparkImagePart): MyObjEncoded = (o.getRowId,o.getColId)
+implicit def fromEncoded(e: MyObjEncoded): DtoSparkImagePart = {
+  val template = new DtoSparkImagePart()
+  template.setRowId(e._1)
+  template.setColId(e._1)
+  template
+}
+  //  implicit val spark: SparkSession
 //  implicit val app: Application
 class SparkSocketTread()(count: DataFrame) extends Thread{
   override def run(): Unit = {
@@ -75,6 +152,7 @@ class SparkSocketTread()(count: DataFrame) extends Thread{
   def initSocket(): Unit = {
     initListener()
 //    initSpark()
+//    initServer()
   }
   private def initSpark(): Unit ={
     new Thread(){
@@ -87,21 +165,49 @@ class SparkSocketTread()(count: DataFrame) extends Thread{
       }
     }.start()
   }
+  def createSchema[T <: Product]()(implicit tag: scala.reflect.runtime.universe.TypeTag[T]) = Encoders.product[T].schema
   private def initListener(): Unit ={
+    val schema = StructType(Array(StructField(name = "rowId", dataType = IntegerType, nullable = false)))
     val listener = new ServerSocket(9999)
     new Thread(){
       setDaemon(true)
       override def run(): Unit = {
+//        val en = Encoders.javaSerialization()
         while (true) {
           val server = listener.accept
-          val output = server.getOutputStream
-          val writer = new PrintWriter(output, true)
-          writer.println("This is a message sent to ther server")
+          import java.io.ObjectInputStream
+          // get the input stream from the connected socket
+          val inputStream = server.getInputStream
+          // create a DataInputStream so we can read data from it.
+          val objectInputStream = new ObjectInputStream(inputStream)
+
+          def getDto:() => Unit = () => {
+            val dto = objectInputStream.readObject.asInstanceOf[DtoSparkImagePart]
+            if (dto.getRowId!=0){
+              print(dto.getRowId)
+
+              val temp = Seq(Row(dto.getRowId));
+              val t = spark.sparkContext.parallelize(temp)
+              val df = spark.createDataFrame(t,schema)
+              df.show()
+              df.printSchema()
+              getDto()
+            }
+          }
+          getDto()
+          inputStream.close()
+          objectInputStream.close()
+          server.close()
         }
       }
     }.start();
+  }
 
 
+  private def initServer(): Unit = {
+    system.actorOf(Props[TCPServer])
+//    val s = new TCPServer
+//    s.preStart();
   }
 
 //    val ssc = new StreamingContext(spark.sparkContext, Seconds(1))

@@ -1,6 +1,7 @@
 package org.satellite.system.image.converter.core;
 
 
+import lombok.SneakyThrows;
 import org.junit.Before;
 import org.junit.Test;
 import org.satellite.system.image.converter.Main;
@@ -56,26 +57,20 @@ public class TestOptionsImageConverters {
     @Test
     public void testConnectToSparkSocket() throws IOException {
         try {
-            final var client = new Socket("127.0.0.1",9999);
-            final var testData = "testData";
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            ObjectOutputStream oos = new ObjectOutputStream(baos);
-            oos.writeObject(testData);
-            oos.flush();
-            oos.close();
+            final var dto = new DtoSparkImagePart();
+            final var dto2 = new DtoSparkImagePart();
+            final var end = new DtoSparkImagePart();
+            dto.setRowId(1);
 
-            // Get the size of the file
-            long length = testData.length();
-            byte[] bytes = new byte[16 * 1024];
-            InputStream is = new ByteArrayInputStream(baos.toByteArray());
-            OutputStream out = client.getOutputStream();
-            int count;
-            while ((count = is.read(bytes)) > 0) {
-                out.write(bytes, 0, count);
-            }
-            out.close();
-            is.close();
-            client.close();
+            final var client = new Socket("localhost",9999);
+            OutputStream outputStream = client.getOutputStream();
+            final var template = new ObjectOutputStream(outputStream);
+
+            template.writeObject(dto);
+            dto2.setRowId(2);
+            template.writeObject(dto2);
+            end.setRowId(0);
+            template.writeObject(end);
         }catch (ConnectException e){
             e.printStackTrace();
         }
@@ -85,14 +80,28 @@ public class TestOptionsImageConverters {
     @Test
     public void testServerSocket() throws IOException {
         final var listener = new ServerSocket(9999);
-        while (true){
-            final var server = listener.accept();
-            final var output = server.getOutputStream();
-            final var writer = new PrintWriter(output,true);
-            writer.println("This is a message sent to ther server");
-//            Files.copy(server.getInputStream(), Path.of("temp.txt"));
-//            BufferedReader fromSoc = new BufferedReader(new InputStreamReader(server.getInputStream()));
+        final var t = new Thread(() -> {
+              while (true) {
+                  // get the input stream from the connected socket
+                  final InputStream inputStream;
+                  try {
+                      final var server = listener.accept();
+                      inputStream = server.getInputStream();
+                      // create a DataInputStream so we can read data from it.
+                      final var objectInputStream = new ObjectInputStream(inputStream);
 
-        }
+                      DtoSparkImagePart listOfMessages;
+                      while((listOfMessages = (DtoSparkImagePart) objectInputStream.readObject())!=null){
+                          System.out.println(listOfMessages.getRowId());
+                      }
+                  } catch (IOException | ClassNotFoundException e) {
+                      e.printStackTrace();
+                  }
+
+              }
+          });
+        t.setDaemon(true);
+        t.start();
     }
+
 }

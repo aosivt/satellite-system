@@ -142,7 +142,7 @@ public class OptionsImageConverters implements WatcherOptions{
         return existsBands.stream().flatMap(b->names.stream()
                 .filter(sn-> properties.getProperty(String.format("%s%s%s%s",
                                                                     TEMPLATE_STRING_SEARCH_NAME,
-                                                                    sn,TEMPLATE_STRING_SEARCH_BANDS,b)).equals(value))
+                                                                    sn,TEMPLATE_STRING_SEARCH_BANDS,b),"").equals(value))
                 .map(s->b)).collect(Collectors.toSet());
     }
 
