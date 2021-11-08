@@ -67,27 +67,39 @@ public class SendToSparkServiceSocket implements SatelliteServiceSocket{
         try {
             Files.walkFileTree(rootPath, new SatelliteSystemFileVisitor(collector));
             final var manifest = meta.entrySet().stream().findFirst().get().getKey();
-            convertAndSend(images,manifest);
+            convertAndSend(images,manifest,rootPath.toFile().getName());
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    private void convertAndSend(final Set<Path> images,final String manifest){
+    private void convertAndSend(final Set<Path> images,final String manifest, final String path){
+        final var placeData = watcherFileArchive.getWatcherOptions().getPathLocalImageTemp();
+
         final var postfixPaths = ((OptionsImageConverters)watcherFileArchive
                                             .getWatcherOptions()).getBandsByValue(manifest);
-        final var mapDs = new HashMap<String, Dataset>();
-
         final var x = gdal.Open(images.stream().findFirst().get().toAbsolutePath().toString()).getRasterXSize();
         final var y = gdal.Open(images.stream().findFirst().get().toAbsolutePath().toString()).getRasterYSize();
-        try(final Socket sender = new Socket("127.0.0.1",9999);) {
-            try {
+        final var proj = gdal.Open(images.stream().findFirst().get().toAbsolutePath().toString()).GetProjection();
+        final var geoTransform =
+                Arrays.stream(gdal.Open(images.stream().findFirst().get().toAbsolutePath().toString()).GetGeoTransform())
+                        .boxed().toArray(Double[]::new);
+
+//        try(final Socket sender = new Socket("127.0.0.1",9999);) {
+        try {
                 IntStream.range(1,y).filter(f->f == 1 || (f - 1) % 3 == 0).forEach(rowId->{
+                    final var set = new LinkedBlockingQueue<DtoSparkImagePart>();
                     IntStream.range(1,x).filter(f->f == 1 || (f - 1) % 3 == 0).forEach(colId->{
                         final var dto = new DtoSparkImagePart();
                         dto.setColId(colId);
                         dto.setRowId(rowId);
-                        images.forEach(image->{
+                        dto.setPlacePath(String.format("%s%s",placeData,path));
+                        dto.setWidth(x);
+                        dto.setHeight(y);
+                        dto.setProjection(proj);
+                        dto.setGeoTransform(geoTransform);
+                        images.parallelStream().forEach(image->{
+
                             final var postfixSearchArray =
                                     postfixPaths.stream().filter(pf->image.toString().contains(pf)).toArray();
                             if (postfixSearchArray.length>0){
@@ -101,28 +113,39 @@ public class SendToSparkServiceSocket implements SatelliteServiceSocket{
 
                                     final var result =
                                             Arrays.stream(tempArray, 0, 9)
-                                                    .boxed().collect(Collectors.toList());
+                                                    .boxed().toArray(Double[]::new);
 
-                                    Method method = DtoSparkImagePart.class.getDeclaredMethod(methodName, List.class);
-                                    method.invoke(dto,result);
+                                    Method method = DtoSparkImagePart.class.getDeclaredMethod(methodName, Double[].class);
+                                    method.invoke(dto, (Object) result);
                                 } catch (Exception e) {
                                     e.printStackTrace();
                                 }
                             };
                         });
-                        send(dto, sender);
+                        set.add(dto);
+//                        send(dto, sender);
                     });
+                    sendDto(set);
                 });
             }catch (Exception e){
                 e.printStackTrace();
             }
-        final var end = new DtoSparkImagePart();
-        end.setRowId(0);
-        send(end, sender);
+//        final var end = new DtoSparkImagePart();
+//        end.setRowId(0);
+//        sendDto(end, sender);
+    }
+
+    private void sendDto(final LinkedBlockingQueue<DtoSparkImagePart> dto){
+        try(final Socket sender = new Socket("127.0.0.1",9999);) {
+
+            OutputStream outputStream = sender.getOutputStream();
+            ObjectOutputStream objectOutputStream = new ObjectOutputStream(outputStream);
+            objectOutputStream.writeObject(dto.toArray(DtoSparkImagePart[]::new));
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+
     private void send(final DtoSparkImagePart dto,final Socket sender){
         try {
             OutputStream outputStream = sender.getOutputStream();

@@ -56,21 +56,30 @@ public class TestOptionsImageConverters {
 
     @Test
     public void testConnectToSparkSocket() throws IOException {
-        try {
+        try(final var client = new Socket("localhost",9999);) {
             final var dto = new DtoSparkImagePart();
             final var dto2 = new DtoSparkImagePart();
             final var end = new DtoSparkImagePart();
             dto.setRowId(1);
-
-            final var client = new Socket("localhost",9999);
+            dto.setColId(1);
+            dto.setProjection("fgsdfgsdg");
+            dto.setGeoTransform(new Double[]{0d});
+            dto.setHeight(1);
+            dto.setWidth(1);
+            dto2.setRowId(1);
+            dto2.setColId(1);
+            dto2.setProjection("fgsdfgsdg");
+            dto2.setGeoTransform(new Double[]{0d});
+            dto2.setHeight(1);
+            dto2.setWidth(1);
+            final var setDto = new DtoSparkImagePart[]{dto,dto2};
             OutputStream outputStream = client.getOutputStream();
             final var template = new ObjectOutputStream(outputStream);
-
-            template.writeObject(dto);
-            dto2.setRowId(2);
-            template.writeObject(dto2);
-            end.setRowId(0);
-            template.writeObject(end);
+            template.writeObject(setDto);
+//            dto.setRowId(2);
+//            template.writeObject(dto);
+//            dto.setRowId(0);
+//            template.writeObject(dto);
         }catch (ConnectException e){
             e.printStackTrace();
         }

@@ -8,7 +8,7 @@ import org.apache.spark.internal.Logging
 import org.apache.spark.network.util.JavaUtils
 import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
 import org.apache.spark.sql.streaming.DataStreamReader
-import org.apache.spark.sql.{DataFrame, Dataset, Encoders, Row, SparkSession}
+import org.apache.spark.sql.{DataFrame, Dataset, Encoders, Row, SaveMode, SparkSession}
 import org.apache.spark.sql.functions.{explode, split}
 import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
 import org.apache.spark.storage.StorageLevel
@@ -112,8 +112,7 @@ case class SparkClientSocket(socket: SocketImpl) extends Socket(socket) with Ser
 //  override def isClosed: Boolean = false
 }
 
-class SparkSocket()(implicit spark: SparkSession, system: ActorSystem) extends Serializable {
-import spark.implicits._
+class SparkSocket()(implicit spark: SparkSession, system: ActorSystem) extends Serializable with SparkSocketDtoSchema {
 //  val encoder: ExpressionEncoder[DtoSparkImagePart] = ExpressionEncoder()
 type MyObjEncoded = (Int, Int)
 implicit val encoder = Encoders.javaSerialization[DtoSparkImagePart]
@@ -167,7 +166,7 @@ class SparkSocketTread()(count: DataFrame) extends Thread{
   }
   def createSchema[T <: Product]()(implicit tag: scala.reflect.runtime.universe.TypeTag[T]) = Encoders.product[T].schema
   private def initListener(): Unit ={
-    val schema = StructType(Array(StructField(name = "rowId", dataType = IntegerType, nullable = false)))
+
     val listener = new ServerSocket(9999)
     new Thread(){
       setDaemon(true)
@@ -181,23 +180,17 @@ class SparkSocketTread()(count: DataFrame) extends Thread{
           // create a DataInputStream so we can read data from it.
           val objectInputStream = new ObjectInputStream(inputStream)
 
-          def getDto:() => Unit = () => {
-            val dto = objectInputStream.readObject.asInstanceOf[DtoSparkImagePart]
-            if (dto.getRowId!=0){
-              print(dto.getRowId)
+          val dto = objectInputStream.readObject.asInstanceOf[Array[DtoSparkImagePart]]
 
-              val temp = Seq(Row(dto.getRowId));
-              val t = spark.sparkContext.parallelize(temp)
-              val df = spark.createDataFrame(t,schema)
-              df.show()
-              df.printSchema()
-              getDto()
-            }
+          if (dto.nonEmpty){
+            inputStream.close()
+            objectInputStream.close()
+            server.close()
+            val path = dto.head.getPlacePath
+            val df = toDF(dto)
+            df.write.mode(SaveMode.Append).parquet(path)
           }
-          getDto()
-          inputStream.close()
-          objectInputStream.close()
-          server.close()
+
         }
       }
     }.start();

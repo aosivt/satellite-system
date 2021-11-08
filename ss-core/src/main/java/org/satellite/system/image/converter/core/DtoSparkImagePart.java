@@ -8,32 +8,23 @@ public class DtoSparkImagePart implements SparkImagePart{
     private Integer width;
     private Integer height;
     private String projection;
-    private List<Double> geoTransform;
-    private List<Double> dataDeepBlue;
-    private List<Double> dataBlue;
-    private List<Double> dataGreen;
-    private List<Double> dataRed;
-    private List<Double> dataNIR;
-    private List<Double> dataSWIR2;
-    private List<Double> dataSWIR3;
-    private List<Double> dataSWIR1;
-    private List<Double> dataCirrus;
-    private List<Double> dataTer;
-    private List<Double> dataTIRS1;
-    private List<Double> dataTIRS2;
-    private List<Double> dataVCID1;
-    private List<Double> dataVCID2;
+    private Double[] geoTransform;
+    private Double[] dataDeepBlue;
+    private Double[] dataBlue;
+    private Double[] dataGreen;
+    private Double[] dataRed;
+    private Double[] dataNIR;
+    private Double[] dataSWIR2;
+    private Double[] dataSWIR3;
+    private Double[] dataSWIR1;
+    private Double[] dataCirrus;
+    private Double[] dataTer;
+    private Double[] dataTIRS1;
+    private Double[] dataTIRS2;
+    private Double[] dataVCID1;
+    private Double[] dataVCID2;
 
     private String placePath;
-
-    @Override
-    public Integer getColId() {
-        return colId;
-    }
-
-    public void setColId(Integer colId) {
-        this.colId = colId;
-    }
 
     @Override
     public Integer getRowId() {
@@ -42,6 +33,15 @@ public class DtoSparkImagePart implements SparkImagePart{
 
     public void setRowId(Integer rowId) {
         this.rowId = rowId;
+    }
+
+    @Override
+    public Integer getColId() {
+        return colId;
+    }
+
+    public void setColId(Integer colId) {
+        this.colId = colId;
     }
 
     public Integer getWidth() {
@@ -70,150 +70,137 @@ public class DtoSparkImagePart implements SparkImagePart{
     }
 
     @Override
-    public List<Double> getGeoTransform() {
+    public Double[] getGeoTransform() {
         return geoTransform;
     }
 
-    public void setGeoTransform(List<Double> geoTransform) {
+    public void setGeoTransform(Double[] geoTransform) {
         this.geoTransform = geoTransform;
     }
 
     @Override
-    public List<Double> getDataDeepBlue() {
+    public Double[] getDataDeepBlue() {
         return dataDeepBlue;
     }
 
-    public void setDataDeepBlue(List<Double> dataDeepBlue) {
+    public void setDataDeepBlue(Double[] dataDeepBlue) {
         this.dataDeepBlue = dataDeepBlue;
     }
 
     @Override
-    public List<Double> getDataBlue() {
+    public Double[] getDataBlue() {
         return dataBlue;
     }
 
-    @Override
-    public void setDataBlue(List<Double> dataBlue) {
+    public void setDataBlue(Double[] dataBlue) {
         this.dataBlue = dataBlue;
     }
 
     @Override
-    public List<Double> getDataGreen() {
+    public Double[] getDataGreen() {
         return dataGreen;
     }
 
-    @Override
-    public void setDataGreen(List<Double> dataGreen) {
+    public void setDataGreen(Double[] dataGreen) {
         this.dataGreen = dataGreen;
     }
 
     @Override
-    public List<Double> getDataRed() {
+    public Double[] getDataRed() {
         return dataRed;
     }
 
-    @Override
-    public void setDataRed(List<Double> dataRed) {
+    public void setDataRed(Double[] dataRed) {
         this.dataRed = dataRed;
     }
 
     @Override
-    public List<Double> getDataNIR() {
+    public Double[] getDataNIR() {
         return dataNIR;
     }
 
-    @Override
-    public void setDataNIR(List<Double> dataNIR) {
+    public void setDataNIR(Double[] dataNIR) {
         this.dataNIR = dataNIR;
     }
 
     @Override
-    public List<Double> getDataSWIR2() {
+    public Double[] getDataSWIR2() {
         return dataSWIR2;
     }
 
-    @Override
-    public void setDataSWIR2(List<Double> dataSWIR2) {
+    public void setDataSWIR2(Double[] dataSWIR2) {
         this.dataSWIR2 = dataSWIR2;
     }
 
     @Override
-    public List<Double> getDataSWIR3() {
+    public Double[] getDataSWIR3() {
         return dataSWIR3;
     }
 
-    @Override
-    public void setDataSWIR3(List<Double> dataSWIR3) {
+    public void setDataSWIR3(Double[] dataSWIR3) {
         this.dataSWIR3 = dataSWIR3;
     }
 
     @Override
-    public List<Double> getDataSWIR1() {
+    public Double[] getDataSWIR1() {
         return dataSWIR1;
     }
 
-    @Override
-    public void setDataSWIR1(List<Double> dataSWIR1) {
+    public void setDataSWIR1(Double[] dataSWIR1) {
         this.dataSWIR1 = dataSWIR1;
     }
 
     @Override
-    public List<Double> getDataCirrus() {
+    public Double[] getDataCirrus() {
         return dataCirrus;
     }
 
-    @Override
-    public void setDataCirrus(List<Double> dataCirrus) {
+    public void setDataCirrus(Double[] dataCirrus) {
         this.dataCirrus = dataCirrus;
     }
 
     @Override
-    public List<Double> getDataTer() {
+    public Double[] getDataTer() {
         return dataTer;
     }
 
-    @Override
-    public void setDataTer(List<Double> dataTer) {
+    public void setDataTer(Double[] dataTer) {
         this.dataTer = dataTer;
     }
 
     @Override
-    public List<Double> getDataTIRS1() {
+    public Double[] getDataTIRS1() {
         return dataTIRS1;
     }
 
-    @Override
-    public void setDataTIRS1(List<Double> dataTIRS1) {
+    public void setDataTIRS1(Double[] dataTIRS1) {
         this.dataTIRS1 = dataTIRS1;
     }
 
     @Override
-    public List<Double> getDataTIRS2() {
+    public Double[] getDataTIRS2() {
         return dataTIRS2;
     }
 
-    @Override
-    public void setDataTIRS2(List<Double> dataTIRS2) {
+    public void setDataTIRS2(Double[] dataTIRS2) {
         this.dataTIRS2 = dataTIRS2;
     }
 
     @Override
-    public List<Double> getDataVCID1() {
+    public Double[] getDataVCID1() {
         return dataVCID1;
     }
 
-    @Override
-    public void setDataVCID1(List<Double> dataVCID1) {
+    public void setDataVCID1(Double[] dataVCID1) {
         this.dataVCID1 = dataVCID1;
     }
 
     @Override
-    public List<Double> getDataVCID2() {
+    public Double[] getDataVCID2() {
         return dataVCID2;
     }
 
-    @Override
-    public void setDataVCID2(List<Double> dataVCID2) {
+    public void setDataVCID2(Double[] dataVCID2) {
         this.dataVCID2 = dataVCID2;
     }
 
