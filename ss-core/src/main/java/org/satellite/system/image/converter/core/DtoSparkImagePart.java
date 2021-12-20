@@ -1,30 +1,31 @@
 package org.satellite.system.image.converter.core;
 
+import java.util.Arrays;
 import java.util.List;
 
 public class DtoSparkImagePart implements SparkImagePart{
-    private Integer rowId;
-    private Integer colId;
-    private Integer width;
-    private Integer height;
-    private String projection;
-    private Double[] geoTransform;
-    private Double[] dataDeepBlue;
-    private Double[] dataBlue;
-    private Double[] dataGreen;
-    private Double[] dataRed;
-    private Double[] dataNIR;
-    private Double[] dataSWIR2;
-    private Double[] dataSWIR3;
-    private Double[] dataSWIR1;
-    private Double[] dataCirrus;
-    private Double[] dataTer;
-    private Double[] dataTIRS1;
-    private Double[] dataTIRS2;
-    private Double[] dataVCID1;
-    private Double[] dataVCID2;
-
-    private String placePath;
+    private Integer lengthObject = 0;
+    private Integer rowId = -1;
+    private Integer colId = -1;
+    private Integer width = -1;
+    private Integer height = -1;
+    private String projection = "";
+    private Double[] geoTransform = new Double[]{};
+    private Double[] dataDeepBlue= new Double[]{};
+    private Double[] dataBlue= new Double[]{};
+    private Double[] dataGreen= new Double[]{};
+    private Double[] dataRed= new Double[]{};
+    private Double[] dataNIR= new Double[]{};
+    private Double[] dataSWIR2= new Double[]{};
+    private Double[] dataSWIR3= new Double[]{};
+    private Double[] dataSWIR1= new Double[]{};
+    private Double[] dataCirrus= new Double[]{};
+    private Double[] dataTer= new Double[]{};
+    private Double[] dataTIRS1= new Double[]{};
+    private Double[] dataTIRS2= new Double[]{};
+    private Double[] dataVCID1= new Double[]{};
+    private Double[] dataVCID2= new Double[]{};
+    private String name;
 
     @Override
     public Integer getRowId() {
@@ -204,12 +205,60 @@ public class DtoSparkImagePart implements SparkImagePart{
         this.dataVCID2 = dataVCID2;
     }
 
-    @Override
-    public String getPlacePath() {
-        return placePath;
+    public String getName() {
+        return name;
     }
 
-    public void setPlacePath(String placePath) {
-        this.placePath = placePath;
+    public void setName(String name) {
+        this.name = name;
     }
+
+    public String value(){
+        return String.format("{" +
+                "\"rowId\":%s," +
+                "\"colId\":%s," +
+                "\"width\":%s," +
+                "\"height\":%s," +
+                "\"projection\":\"%s\"," +
+                "\"geoTransform\":%s," +
+                "\"dataDeepBlue\":%s," +
+                "\"dataBlue\":%s," +
+                "\"dataGreen\":%s," +
+                "\"dataRed\":%s," +
+                "\"dataNIR\":%s," +
+                "\"dataSWIR2\":%s," +
+                "\"dataSWIR3\":%s," +
+                "\"dataSWIR1\":%s," +
+                "\"dataCirrus\":%s," +
+                "\"dataTer\":%s," +
+                "\"dataTIRS1\":%s," +
+                "\"dataTIRS2\":%s," +
+                "\"dataVCID1\":%s," +
+                "\"dataVCID2\":%s," +
+                "\"name\":\"%s\"" +
+                "}",
+                rowId,
+                colId,
+                width,
+                height,
+                projection.replace("\"","'"),
+                Arrays.toString(geoTransform),
+                Arrays.toString(dataDeepBlue),
+                Arrays.toString(dataBlue),
+                Arrays.toString(dataGreen),
+                Arrays.toString(dataRed),
+                Arrays.toString(dataNIR),
+                Arrays.toString(dataSWIR2),
+                Arrays.toString(dataSWIR3),
+                Arrays.toString(dataSWIR1),
+                Arrays.toString(dataCirrus),
+                Arrays.toString(dataTer),
+                Arrays.toString(dataTIRS1),
+                Arrays.toString(dataTIRS2),
+                Arrays.toString(dataVCID1),
+                Arrays.toString(dataVCID2),
+                name
+                );
+    }
+
 }

@@ -1,26 +1,34 @@
 package org.satellite.system.services
 
-import akka.actor.{Actor, ActorSystem, Props}
+import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
 import akka.io.Tcp.{Bind, Bound, CommandFailed, Connected, Register}
 import akka.io.{IO, Tcp}
+import akka.util.ByteString
+import io.netty.handler.codec.serialization.ObjectDecoderInputStream
 import org.apache.avro.io.Encoder
 import org.apache.spark.internal.Logging
 import org.apache.spark.network.util.JavaUtils
 import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
-import org.apache.spark.sql.streaming.DataStreamReader
+import org.apache.spark.sql.streaming.{DataStreamReader, OutputMode}
 import org.apache.spark.sql.{DataFrame, Dataset, Encoders, Row, SaveMode, SparkSession}
 import org.apache.spark.sql.functions.{explode, split}
 import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.apache.spark.streaming.receiver.Receiver
+import org.satellite.system.Main
+import org.satellite.system.Main.system
 import org.satellite.system.core.Application
 import org.satellite.system.image.converter.core.DtoSparkImagePart
 
-import java.io.{BufferedInputStream, BufferedOutputStream, BufferedReader, DataOutputStream, IOException, InputStream, InputStreamReader, OutputStream, PrintStream, PrintWriter}
+import java.io.{BufferedInputStream, BufferedOutputStream, BufferedReader, ByteArrayOutputStream, DataOutputStream, IOException, InputStream, InputStreamReader, ObjectInputStream, ObjectOutputStream, OutputStream, PrintStream, PrintWriter}
 import java.net.{InetSocketAddress, ServerSocket, Socket, SocketException, SocketImpl, SocksSocketImpl}
 import java.nio.charset.StandardCharsets
+import java.util.Date
+import java.util.concurrent.{ExecutorService, Executors}
+import java.util.stream.IntStream
 import scala.annotation.tailrec
+import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
 import scala.util.Try
@@ -29,22 +37,56 @@ import scala.util.Try
 //  def apply(spark: SparkSession, app: Application): SparkSocket = new SparkSocket(spark, app)
 //}
 
-class SimplisticHandler extends Actor {
+object SimplisticHandler{
+  def props()(implicit spark: SparkSession) = Props(new SimplisticHandler())
+}
+
+class SimplisticHandler(implicit spark: SparkSession) extends Actor with SparkSocketDtoSchema with ActorLogging {
   import Tcp._
-  def receive = {
-    case Received(data) => {
-      try {
-        val t = deserialize(data.toArray).asInstanceOf[DtoSparkImagePart]
-        if (t.getRowId==0){
-          context.stop(self)
-        }
-        print(t.getRowId)
+  var listDto = new scala.collection.mutable.ListBuffer[DtoSparkImagePart]()
+  val ssc = new StreamingContext(spark.sparkContext, Seconds(1))
 
-      }catch {
-        case e:Exception => print(e)
-      }
+  val queue = ArrayBuffer[DtoSparkImagePart]()
+  val bufferQueue = ArrayBuffer[DtoSparkImagePart]()
 
+  val writer: () => Unit = ()=> {
+    if(queue.nonEmpty){
+      val seq = ArrayBuffer[DtoSparkImagePart]()
+      queue.copyToBuffer(seq)
+      queue.clear()
+      val head = seq.head
+//      val path = head.getPlacePath
+      val df = toDF(seq)
+//      df.coalesce(1).write.mode(SaveMode.Append).parquet(path)
     }
+  }
+
+  val sendToQueue: DtoSparkImagePart => Unit = (set:DtoSparkImagePart) => {
+        if(queue.size > 200000) {
+          bufferQueue += set
+          writer()
+        } else {
+          if (bufferQueue.nonEmpty){
+            bufferQueue.copyToBuffer(queue)
+            bufferQueue.clear()
+          }
+          queue += set
+        }
+  }
+  def receive: Receive = {
+
+    case Received(data) => buffer(data)
+
+//    case Ack(ack)=>
+//    {
+//      try {
+//            val bytes = data.toArray;
+//            sendToQueue(deserialize(bytes))
+//      }catch {
+//        case e:Exception => print(e)
+//      }
+//
+//    }
 
     case PeerClosed     =>
 //      context.stop(self)
@@ -55,14 +97,91 @@ class SimplisticHandler extends Actor {
 
   @throws[IOException]
   @throws[ClassNotFoundException]
-  def deserialize(data: Array[Byte]): Any = {
+  def deserialize(data: Array[Byte]): DtoSparkImagePart = {
     val in = new ByteArrayInputStream(data)
     val is = new ObjectInputStream(in)
-    is.readObject
+    val value = is.readObject.asInstanceOf[DtoSparkImagePart]
+    is.close()
+    value
+  }
+  def serialise(value: Any): Array[Byte] = {
+    val stream: ByteArrayOutputStream = new ByteArrayOutputStream()
+    val oos = new ObjectOutputStream(stream)
+    oos.writeObject(value)
+    oos.close()
+    stream.toByteArray
+  }
+  private var storage = Vector.empty[ByteString]
+  private var headStorage = Vector.empty[ByteString]
+  private var stored = 0L
+  val writerParquet = Main.system.actorOf(Props(new WriterParquetActor()))
+//  private val ds = spark.createDataFrame(Seq.empty).
+//
+//    writeStream.format("parquet")
+//    .partitionBy("name")
+//    .outputMode(OutputMode.Append)
+//    .start("/media/alex/058CFFE45C3C7827/ss/stg_data_satellite_images").awaitTermination()
+
+  private def buffer(data: ByteString): Unit = {
+    storage :+= data
+    stored += data.size
+    if (stored > 10240000){
+      headStorage ++= storage.take(storage.size)
+      storage = storage.drop(storage.size)
+      stored = 0L
+      val temp = headStorage.map(s=>s.utf8String).reduce((s1,s2)=> s1.concat(s2)).split("\n")
+      val resultArray = temp.take(temp.length-2)
+      println(resultArray(0))
+      headStorage = headStorage.drop(headStorage.length)
+      headStorage :+= ByteString.apply(temp(temp.length-1))
+      writerParquet ! resultArray
+//      streamDs.jo
+//      new Thread(){
+//        override def run(): Unit = {
+//          val ds = jsonConvert(resultArray)
+//          ds.coalesce(1).write.mode(SaveMode.Overwrite)
+//            .partitionBy("name")
+//            .parquet("/media/alex/058CFFE45C3C7827/ss/stg_data_satellite_images")
+//        }
+//      }.start()
+    }
+
+//    if (stored>2200){
+//      var tryDto = Vector.empty[ByteString]
+//      val countStorage = storage.length;
+//      val head = storage(0);
+//        IntStream.rangeClosed(1,countStorage).forEach(f=>{
+//            try{
+//              tryDto ++= storage.dropRight(storage.length-1 - f).drop(f)
+//              val dto = deserialize((head++tryDto.flatten).toArray);
+//              val tail = storage.drop(f+1)
+//              sendToQueue(dto)
+//              storage = storage.drop(storage.length)
+//              storage :+= head
+//              storage = storage ++ tail
+//              tryDto = Vector.empty[ByteString]
+//              stored = storage.flatten.size
+//            } catch {
+//              case e: Exception => println(e)
+//            }
+//        })
+
+
+      //      val selfByteObject = storage.slice(1, storage.size).flatten
+//      val dto = deserialize((storage(0) ++ selfByteObject).toArray);
+//      val tail = selfByteObject.slice(serialise(dto).length ,selfByteObject.size)
+//      sendToQueue(dto)
+//      storage = storage.slice(0, 1)
+//      stored = 4 + tail.length
+//    }
   }
 }
 
-class TCPServer extends Actor {
+
+object TCPServer{
+  def props()(implicit spark: SparkSession) = Props(new TCPServer())
+}
+class TCPServer(implicit spark: SparkSession) extends Actor {
 
   import akka.stream.javadsl.Tcp._
   import context.system
@@ -76,7 +195,8 @@ class TCPServer extends Actor {
     case CommandFailed(_: Bind) => context.stop(self)
 
     case c @ Connected(remote, local) =>
-      val handler = context.actorOf(Props[SimplisticHandler]())
+      val handler = context.actorOf(SimplisticHandler.props())
+
       val connection = sender()
       connection ! Register(handler)
 
@@ -116,7 +236,7 @@ class SparkSocket()(implicit spark: SparkSession, system: ActorSystem) extends S
 //  val encoder: ExpressionEncoder[DtoSparkImagePart] = ExpressionEncoder()
 type MyObjEncoded = (Int, Int)
 implicit val encoder = Encoders.javaSerialization[DtoSparkImagePart]
-
+private val writerParquet = Executors.newFixedThreadPool(2)
   // implicit conversions
 implicit def toEncoded(o: DtoSparkImagePart): MyObjEncoded = (o.getRowId,o.getColId)
 implicit def fromEncoded(e: MyObjEncoded): DtoSparkImagePart = {
@@ -149,16 +269,17 @@ class SparkSocketTread()(count: DataFrame) extends Thread{
    *
    */
   def initSocket(): Unit = {
-    initListener()
+//    initListener()
+    initServer()
 //    initSpark()
-//    initServer()
+
   }
   private def initSpark(): Unit ={
     new Thread(){
       setDaemon(true)
       override def run(): Unit = {
         val df = getDataStreamReader.load();
-        val wordsDF = df.select(explode(split(df("value"), " ")).alias("word"))
+        val wordsDF = df.select(df("value")).alias("word")
         val count = wordsDF.groupBy("word").count()
         query(count)
       }
@@ -166,39 +287,92 @@ class SparkSocketTread()(count: DataFrame) extends Thread{
   }
   def createSchema[T <: Product]()(implicit tag: scala.reflect.runtime.universe.TypeTag[T]) = Encoders.product[T].schema
   private def initListener(): Unit ={
+    implicit val context = ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
+    var listDto = new scala.collection.mutable.ListBuffer[DtoSparkImagePart]()
+    val ssc = new StreamingContext(spark.sparkContext, Seconds(1))
+
+    val queue = ArrayBuffer[DtoSparkImagePart]()
+    val bufferQueue = ArrayBuffer[DtoSparkImagePart]()
+
+    val writer = ()=> {
+      if(queue.nonEmpty){
+        val seq = ArrayBuffer[DtoSparkImagePart]()
+        queue.copyToBuffer(seq)
+        queue.clear()
+        val head = seq.head
+//        val path = head.getPlacePath
+        val df = toDF(seq)
+//        df.write.mode(SaveMode.Append).parquet(path)
+        printf("Дата вхождения writer: %s ||| Номер строки: %s \n", new Date(), head.getRowId)
+      }
+    }
+
+    val sendToQueue = (set:DtoSparkImagePart) => {
+         if(queue.size > 200000 || set.getRowId == -1) {
+           bufferQueue += set
+           writer()
+         } else {
+           if (bufferQueue.nonEmpty){
+            bufferQueue.copyToBuffer(queue)
+            bufferQueue.clear()
+           }
+           queue += set
+//            val path = set.head.getPlacePath
+//            val df = toDF(set)
+//            df.write.mode(SaveMode.Append).parquet(path)
+//            printf("Дата вхождения: %s ||| Номер строки: %s \n", new Date(), set.head.getRowId)
+         }
+    }
+
 
     val listener = new ServerSocket(9999)
     new Thread(){
       setDaemon(true)
       override def run(): Unit = {
-//        val en = Encoders.javaSerialization()
         while (true) {
           val server = listener.accept
           import java.io.ObjectInputStream
-          // get the input stream from the connected socket
-          val inputStream = server.getInputStream
-          // create a DataInputStream so we can read data from it.
-          val objectInputStream = new ObjectInputStream(inputStream)
+          def getDto:() => Unit = () => {
 
-          val dto = objectInputStream.readObject.asInstanceOf[Array[DtoSparkImagePart]]
 
-          if (dto.nonEmpty){
-            inputStream.close()
-            objectInputStream.close()
-            server.close()
-            val path = dto.head.getPlacePath
-            val df = toDF(dto)
-            df.write.mode(SaveMode.Append).parquet(path)
-          }
 
+              val inputStream = server.getInputStream
+              val objectInputStream = new ObjectInputStream(inputStream)
+            try{
+              val dto = objectInputStream.readObject.asInstanceOf[DtoSparkImagePart]
+              if (dto.getRowId != -1){
+                sendToQueue(dto)
+                getDto()
+              } else {
+                inputStream.close()
+                objectInputStream.close()
+                server.close()
+              }
+            } catch {
+              case e:Exception =>
+                println("Could not listen on port: 9999.")
+                Thread.sleep(3000)
+                getDto()
+            }
+
+
+
+            }
+            getDto()
         }
       }
     }.start();
   }
 
+//  private def write(set: Seq[DtoSparkImagePart]):Unit = {
+//    val path = set.head.getPlacePath
+//    val df = toDF(set)
+//    df.write.mode(SaveMode.Append).parquet(path)
+//  }
+
 
   private def initServer(): Unit = {
-    system.actorOf(Props[TCPServer])
+    system.actorOf(TCPServer.props())
 //    val s = new TCPServer
 //    s.preStart();
   }
@@ -269,33 +443,34 @@ class SparkSocketTread()(count: DataFrame) extends Thread{
         .format("socket")
         .option("host","localhost")
         .option("port","9999")
-//        .option("host",app.config.getString("spark.listenSocket.host"))
-//        .option("port",app.config.getString("spark.listenSocket.port"))
+
   }
-  class CustomReceiver(ous: InputStream)
-    extends Receiver[String](StorageLevel.MEMORY_AND_DISK_2) with Logging {
-
-
-
+  class CustomReceiver(ous: InputStream) extends Receiver[Seq[DtoSparkImagePart]](StorageLevel.MEMORY_AND_DISK_2) with Logging {
     def onStart(): Unit = {
-
       // Start the thread that receives data over a connection
       new Thread("Socket Receiver") {
         override def run() {
           try {
+            val inputStream = ous
+            // create a DataInputStream so we can read data from it.
+            val objectInputStream = new ObjectInputStream(inputStream)
+
+            val dto = objectInputStream.readObject.asInstanceOf[Array[DtoSparkImagePart]]
+
             // Until stopped or connection broken continue reading
             val reader = new BufferedReader(
               new InputStreamReader(ous, StandardCharsets.UTF_8))
-            var userInput = reader.readLine()
-            while(!isStopped && userInput != null) {
-              store(userInput)
-              userInput = reader.readLine()
-            }
-            reader.close()
+
+//            var userInput = reader.readLine()
+//            while(!isStopped && userInput != null) {
+//              store(userInput)
+//              userInput = reader.readLine()
+//            }
+//            reader.close()
 //            socket.close()
 
             // Restart in an attempt to connect again when server is active again
-            restart("Trying to connect again")
+//            restart("Trying to connect again")
           }
           catch {
             case e: SocketException =>

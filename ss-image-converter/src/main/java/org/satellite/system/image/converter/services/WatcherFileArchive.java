@@ -43,18 +43,19 @@ public class WatcherFileArchive {
                 try {
                     unArch(f.context().toString());
                     delete(f.context().toString());
-                    services.parallelStream().forEach(SatelliteServiceSocket::send);
+
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             });
         };
+
         watch();
     }
 
     public static void start(final WatcherOptions watcherOptions) throws IOException {
         final var instance = new WatcherFileArchive(watcherOptions);
-        instance.services.add(new SendToDataBaseService(instance.paths));
+        instance.services.add(new SendToDataBaseService());
         instance.services.add(new SendToSparkServiceSocket(instance));
     }
 
@@ -77,30 +78,32 @@ public class WatcherFileArchive {
                 nameFile.substring(0,nameFile.length()-TEMPLATE_ZIP_EXTENSION.length()));
 
         final var rootOutputPath = Paths.get(stringRootPath);
-        Files.createDirectory(rootOutputPath);
-        try (InputStream fin = Files.newInputStream(inputPath)) {
-            final var in = new ZipInputStream(new BufferedInputStream(fin));
-            final var buffer = new byte[BUFFER_SIZE];
-            ZipEntry entry = null;
-            OutputStream out = null;
-            while((entry = in.getNextEntry())!=null) {
-                try {
-                    if (!checkAllowed(entry.getName().toLowerCase())) continue;
-                    final var outputPath =
-                            Paths.get(stringRootPath,File.separator, eraseDirectoryFromStringPath(entry.getName()));
-                    out = Files.newOutputStream(outputPath);
-                    int len = 0;
-                    while ((len = in.read(buffer)) > 0) {
-                        assert out != null;
-                        out.write(buffer, 0, len);
+        if (!rootOutputPath.toFile().exists()){
+            Files.createDirectory(rootOutputPath);
+            try (InputStream fin = Files.newInputStream(inputPath)) {
+                final var in = new ZipInputStream(new BufferedInputStream(fin));
+                final var buffer = new byte[BUFFER_SIZE];
+                ZipEntry entry = null;
+                OutputStream out = null;
+                while((entry = in.getNextEntry())!=null) {
+                    try {
+                        if (!checkAllowed(entry.getName().toLowerCase())) continue;
+                        final var outputPath =
+                                Paths.get(stringRootPath,File.separator, eraseDirectoryFromStringPath(entry.getName()));
+                        out = Files.newOutputStream(outputPath);
+                        int len = 0;
+                        while ((len = in.read(buffer)) > 0) {
+                            assert out != null;
+                            out.write(buffer, 0, len);
+                        }
                     }
-                }
-                finally {
-                    if(out!=null) out.close();
+                    finally {
+                        if(out!=null) out.close();
+                    }
                 }
             }
         }
-        paths.add(rootOutputPath);
+        services.forEach(s->s.send(rootOutputPath));
     }
 
     private void delete(final String nameFile) throws IOException {
@@ -109,7 +112,7 @@ public class WatcherFileArchive {
     }
 
     private Boolean checkAllowed(final String nameFile){
-        if (watcherOptions.allowedMetaData().stream().filter(nameFile::contains).toArray().length > 0) return true;
+        if (watcherOptions.allowedMetaData().stream().filter(nameFile.toLowerCase()::contains).toArray().length > 0) return true;
         return checkAllowedExtension(nameFile);
     }
     private Boolean checkAllowedExtension(final String nameFile){

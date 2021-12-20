@@ -8,8 +8,7 @@ import java.util.List;
     Integer getColId();
     Double[] getGeoTransform();
     String getProjection();
-    String getPlacePath();
-    
+
     Double[] getDataDeepBlue();
     void setDataDeepBlue(Double[] value);
     Double[] getDataBlue();
@@ -38,4 +37,11 @@ import java.util.List;
     void setDataVCID1(Double[] value);
     Double[] getDataVCID2();
     void setDataVCID2(Double[] value);
+
+    String getName();
+
+    void setName(String name);
+
+
+
 }

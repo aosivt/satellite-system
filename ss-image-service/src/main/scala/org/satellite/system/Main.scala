@@ -22,7 +22,7 @@ object Main extends App with SPAWebServer with SocketWebServer {
 
   implicit val app: Application = Application()
   implicit val spark: SparkSession = SparkSession.builder
-    .master("local")
+    .master("local[2]")
     .config("spark.driver.maxResultSize","4g")
     .getOrCreate
 
