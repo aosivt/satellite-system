@@ -13,6 +13,7 @@
         <module>ss-image-converter</module>
         <module>ss-core</module>
         <module>ss-image-service</module>
+        <module>ss-image-receiver</module>
     </modules>
 
     <properties>

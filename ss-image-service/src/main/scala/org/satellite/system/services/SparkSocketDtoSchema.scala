@@ -37,9 +37,14 @@ trait SparkSocketDtoSchema {
     spark.createDataFrame(convert(setDto),schema)
   }
   def write(setDto: Seq[String])(implicit spark: SparkSession): Unit = {
-    jsonToDF(setDto).coalesce(1).write.mode(SaveMode.Append)
+
+    jsonToDF(setDto)
+      .coalesce(1).write.mode(SaveMode.Append)
       .partitionBy("name")
       .parquet("/media/alex/058CFFE45C3C7827/ss/stg_data_satellite_images")
+
+    println(setDto.length)
+    println(setDto.head)
 
   }
   def jsonToDF(setDto: Seq[String])(implicit spark: SparkSession): DataFrame = {

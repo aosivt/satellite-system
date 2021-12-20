@@ -43,13 +43,14 @@ class APIRoutes(application: Application, spark: SparkSession, usersSocket: Arra
         " (case when indArray < 3 then rowId - 1 when 3 <= indArray and indArray < 6 then rowId when 6 <= indArray  then rowId + 1 end) rowId, " +
         " (case when array_contains(Array(0,3,6),indArray) then colId - 1 when array_contains(Array(2,5,8),indArray) then colId + 1 else colId end)  colId, " +
         " width, height, projection, geoTransform, data, projection" +
-        " from parquet.`/media/alex/058CFFE45C3C7827/ss/images_temp/53/32/41/5f/4d/53/49/4c/31/43/5f/32/30/31/36/30/36/30/34/54/30/35/32/36/35/32/5f/4e/30/32/30/32/5f/52/31/30/35/5f/54/34/35/55/56/41/5f/32/30/31/36/30/36/30/34/54/30/35/32/38/34/32/S2A_MSIL1C_20160604T052652_N0202_R105_T45UVA_20160604T052842/*.parquet`" +
+        " from parquet.`/media/alex/058CFFE45C3C7827/ss/stg_data_satellite_images/name=S2A_MSIL1C_20170308T051641_N0204_R062_T45UVA_20170308T051723/*.parquet`" +
         " lateral view posexplode(dataRed) results AS indArray, data " +
+        " where rowId%10=0 and colId%10=0 " +
         " order by rowId, colId" +
         " ) " +
         " group by rowId, projection, geoTransform" +
         " ")
-      ds1.collect().map(m=>Order(m.getInt(0),m.getString(1),m.getSeq[Double](2),m.getSeq[Double](3)))
+      ds1.collect().map(m=>Order(m.getInt(0),m.getString(1).replace("'","\""),m.getSeq[Double](2),m.getSeq[Double](3)))
   }
 
   def routes: Route = {

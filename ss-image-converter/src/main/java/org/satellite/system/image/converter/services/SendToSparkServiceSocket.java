@@ -10,6 +10,7 @@ import org.satellite.system.image.converter.core.OptionsImageConverters;
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
@@ -78,9 +79,94 @@ public class SendToSparkServiceSocket implements SatelliteServiceSocket, Md5Stri
         }
     }
 
-    private void convertAndSend(final Set<Path> images,final String manifest, final String path) {
+    private void convertAndSendWithKite(final Set<Path> images,final String manifest, final String path) {
+
         final var start = new Date();
 
+        final var postfixPaths = ((OptionsImageConverters) watcherFileArchive
+                .getWatcherOptions()).getBandsByValue(manifest);
+
+        final var map = new HashMap<Method, Dataset>();
+        images.forEach(image -> {
+            final var postfixSearchArray =
+                    postfixPaths.stream().filter(pf -> image.toString().toLowerCase().contains(pf)).toArray();
+            if (postfixSearchArray.length > 0) {
+                final var methodName = ((OptionsImageConverters) watcherFileArchive
+                        .getWatcherOptions()).getBandsMethodByBandsPostfix(postfixSearchArray[0].toString())
+                        .stream().findFirst().get();
+                final var ds = gdal.Open(image.toAbsolutePath().toString());
+                try {
+                    Method method = DtoSparkImagePart.class.getDeclaredMethod(methodName, Double[].class);
+                    map.put(method, ds);
+                } catch (NoSuchMethodException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
+        try(final var server = new ServerSocket(9999);) {
+            final var outputStream = server.accept().getOutputStream();
+            final var printer = new PrintWriter(outputStream);
+//            final var printer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8);
+//            ObjectOutputStream objectOutputStream = new ObjectOutputStream(outputStream);
+//            OutputStream objectOutputStream = new ObjectOutputStream(outputStream);
+            if (map.isEmpty()) return;
+            final var metaDataDs = map.entrySet().stream().findAny().orElseThrow().getValue();
+            final var x = metaDataDs.getRasterXSize();
+            final var y = metaDataDs.getRasterYSize();
+            final var proj = metaDataDs.GetProjection();
+            final var geoTransform =
+                    Arrays.stream(metaDataDs.GetGeoTransform())
+                            .boxed().toArray(Double[]::new);
+
+            IntStream.range(1, y).filter(f -> f == 1 || (f - 1) % 3 == 0).forEach(rowId -> {
+
+                IntStream.range(1, x).filter(f -> f == 1 || (f - 1) % 3 == 0).forEach(colId -> {
+                    final var dto = new DtoSparkImagePart();
+                    dto.setColId(colId);
+                    dto.setRowId(rowId);
+                    dto.setName(path);
+                    dto.setWidth(x);
+                    dto.setHeight(y);
+                    dto.setProjection(proj);
+                    dto.setGeoTransform(geoTransform);
+                    map.forEach((key, value) -> {
+                        double[] tempArray = new double[9];
+                        if (colId + 3 < value.getRasterXSize() && rowId + 3 < value.getRasterYSize())
+                            value.GetRasterBand(1).ReadRaster(colId - 1, rowId - 1, 3, 3, tempArray);
+
+                        final var result =
+                                Arrays.stream(tempArray, 0, 9)
+                                        .boxed().toArray(Double[]::new);
+                        try {
+                            key.invoke(dto, (Object) result);
+                        } catch (IllegalAccessException | InvocationTargetException e) {
+                            e.printStackTrace();
+                        }
+                    });
+                    final var json = dto.value();
+                    printer.println(json);
+                });
+                if ((rowId - 1) % 300 == 0){
+                    try {
+                        Thread.sleep(20000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+            outputStream.flush();
+            outputStream.close();
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        System.out.printf("Дата начала: %s ||| Дата завершения: %s", start, new Date());
+
+    }
+
+
+    private void convertAndSend(final Set<Path> images,final String manifest, final String path) {
+        final var start = new Date();
 
         final var postfixPaths = ((OptionsImageConverters) watcherFileArchive
                 .getWatcherOptions()).getBandsByValue(manifest);
@@ -175,7 +261,10 @@ public class SendToSparkServiceSocket implements SatelliteServiceSocket, Md5Stri
                 });
                 if ((rowId - 1) % 600 == 0){
                     try {
-                        Thread.sleep(30000);
+                        final var sleep = 18000;
+                        System.out.printf("> rowId: %s\n", rowId);
+                        System.out.printf("> sleep: %s\n", sleep);
+                        Thread.sleep(sleep);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }

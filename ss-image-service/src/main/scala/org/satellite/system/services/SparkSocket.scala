@@ -1,6 +1,6 @@
 package org.satellite.system.services
 
-import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import akka.io.Tcp.{Bind, Bound, CommandFailed, Connected, Register}
 import akka.io.{IO, Tcp}
 import akka.util.ByteString
@@ -9,7 +9,7 @@ import org.apache.avro.io.Encoder
 import org.apache.spark.internal.Logging
 import org.apache.spark.network.util.JavaUtils
 import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
-import org.apache.spark.sql.streaming.{DataStreamReader, OutputMode}
+import org.apache.spark.sql.streaming.{DataStreamReader, DataStreamWriter, OutputMode}
 import org.apache.spark.sql.{DataFrame, Dataset, Encoders, Row, SaveMode, SparkSession}
 import org.apache.spark.sql.functions.{explode, split}
 import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
@@ -38,10 +38,10 @@ import scala.util.Try
 //}
 
 object SimplisticHandler{
-  def props()(implicit spark: SparkSession) = Props(new SimplisticHandler())
+  def props(sparkSender :Option[ActorRef])(implicit spark: SparkSession) = Props(new SimplisticHandler(sparkSender :Option[ActorRef]))
 }
 
-class SimplisticHandler(implicit spark: SparkSession) extends Actor with SparkSocketDtoSchema with ActorLogging {
+class SimplisticHandler(sparkSender :Option[ActorRef])(implicit spark: SparkSession) extends Actor with SparkSocketDtoSchema with ActorLogging {
   import Tcp._
   var listDto = new scala.collection.mutable.ListBuffer[DtoSparkImagePart]()
   val ssc = new StreamingContext(spark.sparkContext, Seconds(1))
@@ -73,11 +73,25 @@ class SimplisticHandler(implicit spark: SparkSession) extends Actor with SparkSo
           queue += set
         }
   }
+
   def receive: Receive = {
 
-    case Received(data) => buffer(data)
+    case Received(data) => {
 
-//    case Ack(ack)=>
+      if (stored > 1000000){
+        val temp = this.synchronized(buffer(data))
+        if (temp.nonEmpty){
+          //        val ds = jsonConvert(temp)
+          writerParquet ! temp
+          //        sparkSender.get ! Write(ByteString.apply(temp(0)))
+        }
+      } else{
+        buffer(data)
+      }
+
+
+    }
+//    case NoAck(ack)=>
 //    {
 //      try {
 //            val bytes = data.toArray;
@@ -88,8 +102,7 @@ class SimplisticHandler(implicit spark: SparkSession) extends Actor with SparkSo
 //
 //    }
 
-    case PeerClosed     =>
-//      context.stop(self)
+    case PeerClosed => context.stop(self)
   }
   import java.io.ByteArrayInputStream
   import java.io.IOException
@@ -113,7 +126,7 @@ class SimplisticHandler(implicit spark: SparkSession) extends Actor with SparkSo
   }
   private var storage = Vector.empty[ByteString]
   private var headStorage = Vector.empty[ByteString]
-  private var stored = 0L
+  @volatile private var stored = 0L
   val writerParquet = Main.system.actorOf(Props(new WriterParquetActor()))
 //  private val ds = spark.createDataFrame(Seq.empty).
 //
@@ -122,19 +135,24 @@ class SimplisticHandler(implicit spark: SparkSession) extends Actor with SparkSo
 //    .outputMode(OutputMode.Append)
 //    .start("/media/alex/058CFFE45C3C7827/ss/stg_data_satellite_images").awaitTermination()
 
-  private def buffer(data: ByteString): Unit = {
+  private def buffer(data: ByteString): Array[String] = {
     storage :+= data
     stored += data.size
-    if (stored > 10240000){
+    if (stored > 10000000){
+      stored = 0L
       headStorage ++= storage.take(storage.size)
       storage = storage.drop(storage.size)
-      stored = 0L
+
       val temp = headStorage.map(s=>s.utf8String).reduce((s1,s2)=> s1.concat(s2)).split("\n")
       val resultArray = temp.take(temp.length-2)
-      println(resultArray(0))
+//      println(resultArray(0))
       headStorage = headStorage.drop(headStorage.length)
       headStorage :+= ByteString.apply(temp(temp.length-1))
-      writerParquet ! resultArray
+      return resultArray
+//      writerParquet ! resultArray
+
+
+
 //      streamDs.jo
 //      new Thread(){
 //        override def run(): Unit = {
@@ -145,6 +163,7 @@ class SimplisticHandler(implicit spark: SparkSession) extends Actor with SparkSo
 //        }
 //      }.start()
     }
+    Array.empty[String]
 
 //    if (stored>2200){
 //      var tryDto = Vector.empty[ByteString]
@@ -188,6 +207,8 @@ class TCPServer(implicit spark: SparkSession) extends Actor {
 
   IO(Tcp) ! Bind(self, new InetSocketAddress("localhost", 9999))
 
+  var sparkSender : Option[ActorRef] = Option.empty;
+
   def receive: Receive = {
     case b @ Bound(_) =>
       context.parent ! b
@@ -195,9 +216,13 @@ class TCPServer(implicit spark: SparkSession) extends Actor {
     case CommandFailed(_: Bind) => context.stop(self)
 
     case c @ Connected(remote, local) =>
-      val handler = context.actorOf(SimplisticHandler.props())
-
       val connection = sender()
+      if (sparkSender.isEmpty){
+        sparkSender = Option.apply(connection)
+
+      }
+      val handler = context.actorOf(SimplisticHandler.props(sparkSender))
+
       connection ! Register(handler)
 
   }
@@ -280,8 +305,15 @@ class SparkSocketTread()(count: DataFrame) extends Thread{
       override def run(): Unit = {
         val df = getDataStreamReader.load();
         val wordsDF = df.select(df("value")).alias("word")
-        val count = wordsDF.groupBy("word").count()
-        query(count)
+        wordsDF.printSchema()
+        wordsDF.groupBy("value").count().writeStream
+          .format("console")
+          .outputMode("complete")
+          .start()
+          .awaitTermination()
+//        wordsDF.show()
+//        val count = wordsDF.groupBy("word").count()
+//        query(wordsDF)
       }
     }.start()
   }
@@ -324,7 +356,6 @@ class SparkSocketTread()(count: DataFrame) extends Thread{
          }
     }
 
-
     val listener = new ServerSocket(9999)
     new Thread(){
       setDaemon(true)
@@ -333,9 +364,6 @@ class SparkSocketTread()(count: DataFrame) extends Thread{
           val server = listener.accept
           import java.io.ObjectInputStream
           def getDto:() => Unit = () => {
-
-
-
               val inputStream = server.getInputStream
               val objectInputStream = new ObjectInputStream(inputStream)
             try{
@@ -354,9 +382,6 @@ class SparkSocketTread()(count: DataFrame) extends Thread{
                 Thread.sleep(3000)
                 getDto()
             }
-
-
-
             }
             getDto()
         }
